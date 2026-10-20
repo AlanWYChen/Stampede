@@ -1,0 +1,15 @@
+name: macOS checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test history, monitoring, and encrypted persistence
+        run: swift test
+      - name: Build native macOS application
+        run: xcodebuild -project Stampede.xcodeproj -scheme Stampede -configuration Release -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build

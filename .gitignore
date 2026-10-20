@@ -1,0 +1,19 @@
+# Generated build output and local development state
+.build/
+build/
+.swiftpm/
+.DS_Store
+*.xcuserstate
+xcuserdata/
+*.log
+
+# Local planning documents and installed agent skills
+docs/
+.agents/
+.codex/
+
+# Local secrets and clipboard snapshots
+.env
+.env.*
+!.env.example
+history.enc

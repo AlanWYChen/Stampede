@@ -1,0 +1,35 @@
+// !$*UTF8*$!
+{ archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
+A329B36A89144AA50FF18E36 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Stampede/AppModel.swift"; sourceTree = SOURCE_ROOT; };
+2B59190022A830CAF2C30A43 = { isa = PBXBuildFile; fileRef = A329B36A89144AA50FF18E36; };
+46CAEAEF3C0D43358358D739 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Stampede/ClipboardSelfTest.swift"; sourceTree = SOURCE_ROOT; };
+8ED29EC12BD35400EBED31D4 = { isa = PBXBuildFile; fileRef = 46CAEAEF3C0D43358358D739; };
+ED674133FD8EB995BE16EB83 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Stampede/SettingsView.swift"; sourceTree = SOURCE_ROOT; };
+39797EA9968030184CD61160 = { isa = PBXBuildFile; fileRef = ED674133FD8EB995BE16EB83; };
+DB0A13863E28840912FA3B5B = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Stampede/StampIcon.swift"; sourceTree = SOURCE_ROOT; };
+C6709F890181D5CED5ECA370 = { isa = PBXBuildFile; fileRef = DB0A13863E28840912FA3B5B; };
+8886CD83265BE4CDADD8E6B9 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Stampede/StampedeApp.swift"; sourceTree = SOURCE_ROOT; };
+4AC0F03E61A8964F86AA93D0 = { isa = PBXBuildFile; fileRef = 8886CD83265BE4CDADD8E6B9; };
+8FB8634B09DC01CD8D4F1729 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Stampede/SystemClipboardClient.swift"; sourceTree = SOURCE_ROOT; };
+FC94F9F79F0D4E22474EE8B6 = { isa = PBXBuildFile; fileRef = 8FB8634B09DC01CD8D4F1729; };
+666E89E1BC856C4755BA6003 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/StampedeCore/ClipboardAccessState.swift"; sourceTree = SOURCE_ROOT; };
+3CF114A076567951D65A505D = { isa = PBXBuildFile; fileRef = 666E89E1BC856C4755BA6003; };
+C5195ECFD78E58124DB48D24 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/StampedeCore/ClipboardMonitor.swift"; sourceTree = SOURCE_ROOT; };
+5A1CBAB5C9A2479219053ACC = { isa = PBXBuildFile; fileRef = C5195ECFD78E58124DB48D24; };
+4CCC5C680C54AF0B29A6E18D = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/StampedeCore/History.swift"; sourceTree = SOURCE_ROOT; };
+4ED1323E87EE414D7750D658 = { isa = PBXBuildFile; fileRef = 4CCC5C680C54AF0B29A6E18D; };
+F063F06F64396CC4D6BF6AD5 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/StampedeCore/HistoryRepository.swift"; sourceTree = SOURCE_ROOT; };
+E14ABD73954471D619F15747 = { isa = PBXBuildFile; fileRef = F063F06F64396CC4D6BF6AD5; };
+F8995BA5891B07E328C60D6B = { isa = PBXFileReference; lastKnownFileType = image.icns; path = Resources/Stampede.icns; sourceTree = SOURCE_ROOT; };
+74C2431FE30C4A47C8443B80 = { isa = PBXBuildFile; fileRef = F8995BA5891B07E328C60D6B; };
+0189424A5A60FED329FA868E = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (74C2431FE30C4A47C8443B80); runOnlyForDeploymentPostprocessing = 0; };
+38A007151ABE87CC01A5B6E9 = { isa = PBXFileReference; explicitFileType = wrapper.application; path = Stampede.app; sourceTree = BUILT_PRODUCTS_DIR; };
+FBDC4F23F93125BBEEAE800C = { isa = PBXGroup; children = (38A007151ABE87CC01A5B6E9); name = Products; sourceTree = "<group>"; };
+B28B7AF69320201D1CF206EB = { isa = PBXGroup; children = (A329B36A89144AA50FF18E36, 46CAEAEF3C0D43358358D739, ED674133FD8EB995BE16EB83, DB0A13863E28840912FA3B5B, 8886CD83265BE4CDADD8E6B9, 8FB8634B09DC01CD8D4F1729, 666E89E1BC856C4755BA6003, C5195ECFD78E58124DB48D24, 4CCC5C680C54AF0B29A6E18D, F063F06F64396CC4D6BF6AD5, F8995BA5891B07E328C60D6B, FBDC4F23F93125BBEEAE800C); sourceTree = "<group>"; };
+BCE16DD0260827ECF338C787 = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (2B59190022A830CAF2C30A43, 8ED29EC12BD35400EBED31D4, 39797EA9968030184CD61160, C6709F890181D5CED5ECA370, 4AC0F03E61A8964F86AA93D0, FC94F9F79F0D4E22474EE8B6, 3CF114A076567951D65A505D, 5A1CBAB5C9A2479219053ACC, 4ED1323E87EE414D7750D658, E14ABD73954471D619F15747); runOnlyForDeploymentPostprocessing = 0; };
+BD604D99E75E45D38BC7AC8F = { isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = "NO"; PRODUCT_NAME = "Stampede"; PRODUCT_BUNDLE_IDENTIFIER = "com.alanwychen.rotarystamp"; SWIFT_VERSION = "6.0"; MACOSX_DEPLOYMENT_TARGET = "14.0"; SDKROOT = "macosx"; INFOPLIST_FILE = "Resources/Info.plist"; GENERATE_INFOPLIST_FILE = "NO"; CODE_SIGN_STYLE = "Manual"; CODE_SIGN_IDENTITY = "-"; COMBINE_HIDPI_IMAGES = "YES"; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG"; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; }; name = Debug; };
+D41F56CEA1AC933D25C57AEB = { isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = "NO"; PRODUCT_NAME = "Stampede"; PRODUCT_BUNDLE_IDENTIFIER = "com.alanwychen.rotarystamp"; SWIFT_VERSION = "6.0"; MACOSX_DEPLOYMENT_TARGET = "14.0"; SDKROOT = "macosx"; INFOPLIST_FILE = "Resources/Info.plist"; GENERATE_INFOPLIST_FILE = "NO"; CODE_SIGN_STYLE = "Manual"; CODE_SIGN_IDENTITY = "-"; COMBINE_HIDPI_IMAGES = "YES"; SWIFT_OPTIMIZATION_LEVEL = "-O"; SWIFT_ACTIVE_COMPILATION_CONDITIONS = ""; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; }; name = Release; };
+E30856D4D988D9571DE7D610 = { isa = XCConfigurationList; buildConfigurations = (BD604D99E75E45D38BC7AC8F, D41F56CEA1AC933D25C57AEB); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+0E8A3AD980EC179856012B7E = { isa = PBXNativeTarget; buildConfigurationList = E30856D4D988D9571DE7D610; buildPhases = (BCE16DD0260827ECF338C787, 0189424A5A60FED329FA868E); buildRules = (); dependencies = (); name = Stampede; productName = Stampede; productReference = 38A007151ABE87CC01A5B6E9; productType = "com.apple.product-type.application"; };
+98F54143AB4E86B28C3AFEE0 = { isa = PBXProject; attributes = { LastUpgradeCheck = 1600; }; buildConfigurationList = E30856D4D988D9571DE7D610; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base); mainGroup = B28B7AF69320201D1CF206EB; productRefGroup = FBDC4F23F93125BBEEAE800C; projectDirPath = ""; projectRoot = ""; targets = (0E8A3AD980EC179856012B7E); };
+}; rootObject = 98F54143AB4E86B28C3AFEE0; }
