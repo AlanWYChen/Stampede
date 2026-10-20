@@ -151,4 +151,4 @@ For code changes, run `swift test` and `./scripts/build-app.sh`, and describe ho
 
 ## License
 
-No license has been selected yet.
+Licensed under the [MIT License](LICENSE).
