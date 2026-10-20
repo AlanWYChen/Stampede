@@ -1,70 +1,154 @@
+<img src="assets/icon.png" width="96" height="96" alt="Stampede icon">
+
 # Stampede
 
-A native Swift menu bar utility that keeps your last 10 or 20 text copies, encrypted locally across restarts.
+**Your recent copies, one menu away.**
 
-Select an older entry from the clipboard menu to move it to the top and make it the active clipboard. Paste with **⌘V**, or your existing paste mapping. A later normal copy always becomes active. Selecting history does not automatically type into another app.
+Stampede is a native macOS menu bar app that remembers your last **10 or 20 text copies**, saves them encrypted across restarts, and lets you choose what to paste next.
 
-## Build and run
+[![macOS checks](https://github.com/AlanWYChen/Stampede/actions/workflows/ci.yml/badge.svg)](https://github.com/AlanWYChen/Stampede/actions/workflows/ci.yml)
 
-Requires macOS 14 or later and Xcode with Swift 6 or later. No third-party dependencies.
+## Features
+
+- **Clipboard history:** select an older entry to move it to the top and make it the active clipboard.
+- **Normal paste:** use **⌘V** or your existing paste mapping. A new copy always becomes active; pasting does not consume history.
+- **Persistent storage:** AES-256-GCM encryption with a randomly generated key stored in macOS Keychain.
+- **Universal Clipboard:** keep copying and pasting between your Mac and nearby Apple devices.
+- **Ready at login:** enable automatic launch during setup; manage it later in Settings.
+- **Simple controls:** pause capture, choose your history limit, clear the clipboard, or recover unreadable history.
+
+Built with Swift, AppKit, and SwiftUI. No third-party package dependencies or Stampede account required.
+
+## Get started
+
+Stampede currently ships as source. There is no packaged release installer yet.
+
+**Requirements:** macOS 14 or later, plus a full Xcode installation with Swift 6 and the macOS 15.4 SDK or later to build.
 
 ```sh
-swift test
+git clone https://github.com/AlanWYChen/Stampede.git
+cd Stampede
+./scripts/install-local.sh
+```
+
+The script builds `Stampede.app`, installs it in `~/Applications`, and opens it. It refuses to overwrite an existing installation.
+
+1. Choose **Enable History & Launch at Login** on the welcome screen.
+2. Click the clipboard icon in the menu bar to open your history. Stampede has no ordinary Dock window.
+3. Copy some text, select any saved entry, and paste as usual.
+
+If capture needs permission, open **Settings → Check Clipboard Access**. The result explains the current state. Use **Open System Settings…** to review clipboard/paste permissions when needed. Launch at login may also need approval in macOS Login Items settings.
+
+### Build without installing
+
+```sh
 ./scripts/build-app.sh
 open build/Stampede.app
 ```
 
-The `build/` folder contains the single runnable `Stampede.app`. Keep local Xcode verification scratch output under `.build/` and remove its generated app after verification to avoid duplicate app-search results.
+You can also open `Stampede.xcodeproj` and run the **Stampede** scheme. Use one copy of the app at a time.
 
-Alternatively, open `Stampede.xcodeproj`, select the **Stampede** scheme, and Run. The Xcode project compiles the same sources as the Swift package. After adding source files, regenerate the project with `python3 scripts/generate-xcode-project.py`.
+### Update a local installation
 
-For a stable local installation, quit any running copy, then run:
+Quit Stampede, update your checkout, and rebuild:
 
 ```sh
-./scripts/install-local.sh
+git pull --ff-only
+./scripts/build-app.sh
 ```
 
-This builds and installs to `~/Applications/Stampede.app` without replacing an existing installation. To update an existing copy, quit it and replace it deliberately after keeping a backup. Do not alternate running builds from multiple locations against the same saved history.
+Replace `~/Applications/Stampede.app` with the rebuilt `build/Stampede.app`, then reopen it. Saved history lives separately from the app bundle. Local builds are ad-hoc signed; rebuilding can cause macOS to request Keychain authorization again. You can build with your own signing identity using `CODE_SIGN_IDENTITY="Your signing identity" ./scripts/build-app.sh`.
 
-The app uses a menu bar icon and has no ordinary Dock window. First launch explains storage and lets you enable history and launch at login. Open the clipboard menu for Settings, Pause/Resume, the 10/20 limit, Clear Clipboard, and Quit.
+## How it works
 
-On recent macOS versions, continuous capture requires **Always Allow** clipboard access in **System Settings → Privacy & Security → Paste from Other Apps**. Use **Check Clipboard Access** in Settings to see the current permission and a timestamped result. It initiates one foreground read only when permission is undecided or set to Ask Each Time; allowed access needs no dialog. Checking never captures or promotes an entry and does not resume paused capture. **Open System Settings…** opens Settings so you can search for clipboard/paste permissions when access is blocked. Background polling never repeatedly requests permission. Login-item registration may require approval under **System Settings → General → Login Items**; Settings reports the actual system registration state.
+Copy `Alpha`, `Bravo`, then `Charlie`. Your history shows `Charlie → Bravo → Alpha`.
 
-## History and restart behavior
+Select `Alpha`: history becomes `Alpha → Charlie → Bravo`, and your next paste inserts `Alpha`. Copy `Delta` afterward, and `Delta` becomes the active item.
 
-- History is encrypted with CryptoKit AES-GCM in `~/Library/Application Support/com.alanwychen.rotarystamp/history.enc`.
-- The encryption key lives in your local macOS Keychain, not in the history file, preferences, or this repository.
-- A save happens shortly after a copy or selection. Check that the menu reports **History saved locally · encrypted** before testing a restart. Pending changes can be lost if the process is forcibly terminated before saving.
-- Startup restores the list without replacing the system clipboard. Click any saved entry to activate it again.
-- Capture pause and history capacity persist. Pausing does not delete existing entries.
-- **Clear Clipboard** clears the current Mac clipboard and Stampede’s in-memory and saved history, after confirmation. It does not erase items already pasted, backed up, or stored on other devices.
-- **Pause Capture** only stops adding new copies to Stampede. Normal copy/paste and Universal Clipboard continue working; existing saved items remain selectable.
-- If history cannot be opened, a popup offers **Try Again** and **Reset**. Try Again retries loading and can request foreground Keychain authorization. Reset permanently replaces saved history with an empty encrypted snapshot, recreating a missing key if necessary. Reset leaves the current Mac clipboard unchanged. If Keychain is locked or access is denied, reset reports the failure instead of silently discarding the old file.
-- Clipboard text, previews, and content-derived identifiers are not logged. Marked concealed, transient, and generated content is excluded. Unmarked passwords can still be captured.
-- Text is preserved exactly, up to 1 MiB per entry. Images, files, and multi-item copies are not stored; their normal paste behavior remains intact.
+| Control | Behavior |
+| --- | --- |
+| **Select an entry** | Makes that text the active system clipboard. You paste it manually. |
+| **Pause Capture** | Stops saving new copies. Normal copy/paste and Universal Clipboard keep working; existing entries remain selectable. |
+| **Clear Clipboard** | After confirmation, clears the current Mac clipboard and Stampede’s saved history. |
+| **Try Again** | Retries opening unreadable history or accessing its encryption key. |
+| **Reset** | Starts an empty saved history and recreates a missing key if needed. Leaves the current Mac clipboard unchanged. |
 
-The local build is ad-hoc signed and is not sandboxed or notarized. A stable Developer ID signing identity is recommended before relying on it long term: rebuilding an ad-hoc executable can change Keychain trust. A missing or inaccessible key never causes the existing encrypted history to be silently replaced. Set `CODE_SIGN_IDENTITY` when building with an available signing identity. Do not delete the Keychain item if you need to recover saved history.
+After a restart, Stampede restores your history list **without overwriting the current clipboard**. Select a saved entry when you want to use it again. Pause state and history capacity also persist.
 
-## iPad and Universal Clipboard
+## Privacy and storage
 
-Ordinary Mac copies and explicitly selected history entries use the general pasteboard, preserving Apple's Universal Clipboard path. Copy on iPad and paste on Mac normally; eligible text enters Mac history when the Mac exposes a readable payload to Stampede. Capture never republishes observed remote text.
+Stampede keeps history locally. It encrypts the entire saved snapshot using **CryptoKit AES-256-GCM**, with a fresh random nonce for each save. Its random 256-bit key is stored separately in Keychain, with iCloud Keychain synchronization disabled.
 
-Devices must be nearby, use the same Apple Account, and have Wi-Fi, Bluetooth, and Handoff on. Apple controls transfer timing and expiration. The full history stays on the Mac; select a saved entry to make it available for a new cross-device paste. Stampede does not poll or control the iPad directly. [Apple's Universal Clipboard guide](https://support.apple.com/en-us/102430)
+- Clipboard text and previews are not logged.
+- Content marked concealed, transient, or automatically generated is excluded.
+- **Unmarked passwords and other sensitive text can still be captured.** Pause capture or clear the clipboard when needed.
+- Encryption protects the saved file; history remains readable in memory and in the app while running.
+- Saves happen shortly after a copy. Unsaved changes can be lost if the app is forcibly terminated before a save completes.
+- If history or its key cannot be read, Stampede reports the error rather than silently replacing the file. If the key is permanently lost, the old history cannot be decrypted.
 
-## Icon artwork
+<details>
+<summary>Storage location and Keychain entry</summary>
 
-The app and menu bar share native vector stacked-clipboard artwork based on the supplied reference in `Sources/Stampede/StampIcon.swift`. The app icon is black on a white rounded tile; the transparent menu bar template adapts to system appearance. Regenerate the bundled icon with `./scripts/generate-icon.sh` before building after artwork changes. Generated icon sizes stay under `.build/`.
+History file:
 
-## Verification
+```text
+~/Library/Application Support/com.alanwychen.rotarystamp/history.enc
+```
+
+- Service: `com.alanwychen.rotarystamp.history`
+- Account: `history-key-v1`
+
+These identifiers are retained for compatibility with early installations. Clearing or resetting history does not erase copies in backups, items already pasted elsewhere, or data stored on other devices.
+
+</details>
+
+### Mac, iPad, and iPhone
+
+Stampede uses the normal system clipboard, so ordinary copies and explicitly selected history entries remain eligible for Apple’s Universal Clipboard. Readable text arriving from another device can also enter the Mac’s history while capture is enabled.
+
+Devices must be nearby, signed in to the same Apple Account, and have Wi-Fi, Bluetooth, and Handoff enabled. Apple controls delivery and expiration. The **full history stays on the Mac**; select an old entry to make it available for another cross-device paste. [Apple’s Universal Clipboard guide](https://support.apple.com/en-us/102430)
+
+## Current limitations
+
+- **Text only:** images, files, and multi-item copies are not saved. Their normal system paste behavior is unaffected.
+- **Bounded history:** 10 or 20 entries, with a maximum of 1 MiB of UTF-8 text per entry.
+- **Polling:** very rapid copies between checks can be missed. Stampede cannot reconstruct copies made while it was closed or the Mac was asleep.
+- **Local builds:** ad-hoc signed by default and not sandboxed. No notarized installer or automatic updater is provided.
+
+## Development
 
 ```sh
 swift test
 ./scripts/build-app.sh
 build/Stampede.app/Contents/MacOS/Stampede --self-test
 build/Stampede.app/Contents/MacOS/Stampede --keychain-self-test
+```
+
+`--self-test` uses a private pasteboard without inspecting or changing your clipboard. `--keychain-self-test` creates and removes a disposable test key without touching the history key. Automated checks cover history ordering, limits, access checks, persistence, recovery, and clearing; CI also builds the native Xcode project.
+
+For a sample-data preview that does not access your clipboard, save history, or register login items:
+
+```sh
 open -n -a "$PWD/build/Stampede.app" --args --preview
 ```
 
-`--keychain-self-test` creates and removes one disposable test key under a unique service identifier, without touching your history key. `--self-test` uses a private pasteboard so it does not inspect or replace your clipboard. `--preview` shows three sample entries without reading/writing the system clipboard, saving history, or registering login items. Quit the preview before running the real app.
+Quit the preview before running the real app. Permission dialogs, automatic launch after reboot, and cross-device delivery still need testing in a real user session.
 
-Automated coverage includes history ordering and limits, clipboard access checks, encrypted persistence, missing/corrupted history recovery, and clearing. Real-device validation of clipboard permissions, login startup, and Mac ↔ iPad behavior remains separate from these tests.
+| Location | Purpose |
+| --- | --- |
+| `Sources/Stampede/` | Menu bar app, Settings, and system clipboard adapter |
+| `Sources/StampedeCore/` | History model, monitoring, and encrypted storage |
+| `Tests/StampedeCoreTests/` | Automated core tests |
+| `scripts/` | Build, install, icon generation, and Xcode project generation |
+
+After adding or moving Swift source files, run `python3 scripts/generate-xcode-project.py` to update the checked-in Xcode project. After changing `Sources/Stampede/StampIcon.swift`, run `./scripts/generate-icon.sh` to regenerate the bundled icon and README image. Keep generated build output under the ignored `.build/` and `build/` directories.
+
+## Contributing
+
+[Bug reports](https://github.com/AlanWYChen/Stampede/issues/new) and focused pull requests are welcome. Include your macOS version, steps to reproduce, and expected behavior. Use sample text rather than private clipboard contents in reports.
+
+For code changes, run `swift test` and `./scripts/build-app.sh`, and describe how you verified the change. Add regression coverage for changes to capture, ordering, storage, or recovery.
+
+## License
+
+No license has been selected yet.
