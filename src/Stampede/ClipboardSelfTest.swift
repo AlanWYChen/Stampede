@@ -31,6 +31,13 @@ import Security
     }
 
     static func sampleImageData(type: String = "public.png") -> Data? {
+        // Synthetic two-frame, lossless WebP; Image I/O has no WebP encoder.
+        if type == "org.webmproject.webp" {
+            return Data(
+                base64Encoded:
+                    "UklGRoQAAABXRUJQVlA4WAoAAAASAAAAnwAATwAAQU5JTQYAAAAAAAAAAABBTk1GKAAAAAAAAAAAAJ8AAE8AAGQAAAJWUDhMDwAAAC+fwBMQBxD9jwIGIqL/AQBBTk1GKAAAAAAAAAAAAJ8AAE8AAGQAAABWUDhMDwAAAC+fwBMABxDR//4HIqL/AQA="
+            )
+        }
         guard
             let bitmap = NSBitmapImageRep(
                 bitmapDataPlanes: nil,
@@ -56,8 +63,11 @@ import Security
         }
         guard let image = bitmap.cgImage else { return nil }
         let output = NSMutableData()
-        guard let destination = CGImageDestinationCreateWithData(output, type as CFString, 1, nil) else { return nil }
-        CGImageDestinationAddImage(destination, image, nil)
+        let frames = type == "com.compuserve.gif" ? 2 : 1
+        guard let destination = CGImageDestinationCreateWithData(output, type as CFString, frames, nil) else {
+            return nil
+        }
+        for _ in 0..<frames { CGImageDestinationAddImage(destination, image, nil) }
         guard CGImageDestinationFinalize(destination) else { return nil }
         return output as Data
     }
@@ -91,8 +101,13 @@ import Security
             item.setData(data, forType: type)
             item.setString("https://example.com/image", forType: .URL)
             item.setString("https://example.com/image", forType: .string)
-            // Both representations still form one entry; PNG is preferred when present.
+            // Multiple representations form one entry; animation originals outrank still fallbacks.
             if type == .png, let tiff = sampleImageData(type: "public.tiff") { item.setData(tiff, forType: .tiff) }
+            if ["com.compuserve.gif", "org.webmproject.webp"].contains(identifier),
+                let png = sampleImageData()
+            {
+                item.setData(png, forType: .png)
+            }
             board.clearContents()
             guard board.writeObjects([item]), case .image(let candidate) = client.read(),
                 candidate.type == type.rawValue, candidate.data == data, candidate.sourceHost == "example.com",
@@ -102,6 +117,8 @@ import Security
                 let source = CGImageSourceCreateWithData(restored.data as CFData, nil),
                 let decoded = CGImageSourceCreateImageAtIndex(source, 0, nil),
                 decoded.width == 160, decoded.height == 80,
+                CGImageSourceGetCount(source)
+                    == (["com.compuserve.gif", "org.webmproject.webp"].contains(identifier) ? 2 : 1),
                 !["public.png", "public.tiff"].contains(identifier) || decoded.alphaInfo != .none
             else { return false }
             let sensitiveImage = NSPasteboardItem()

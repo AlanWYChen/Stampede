@@ -13,6 +13,14 @@ final class ImageSupportTests: XCTestCase {
         height: Int = 4,
         orientation: Int = 1
     ) throws -> Data {
+        // Image I/O reads WebP but does not provide a WebP encoder. Synthetic lossless 160 × 80 fixture.
+        if type == UTType.webP.identifier {
+            return Data(
+                base64Encoded: frames == 1
+                    ? "UklGRiIAAABXRUJQVlA4TBYAAAAvn8ATEAcQ/Y8ChgFICP//KxH9T30A"
+                    : "UklGRoQAAABXRUJQVlA4WAoAAAASAAAAnwAATwAAQU5JTQYAAAAAAAAAAABBTk1GKAAAAAAAAAAAAJ8AAE8AAGQAAAJWUDhMDwAAAC+fwBMQBxD9jwIGIqL/AQBBTk1GKAAAAAAAAAAAAJ8AAE8AAGQAAABWUDhMDwAAAC+fwBMABxDR//4HIqL/AQA="
+            )!
+        }
         let pixels = [UInt8](repeating: 128, count: width * height * 4)
         let provider = CGDataProvider(data: Data(pixels) as CFData)!
         let image = CGImage(
@@ -46,14 +54,16 @@ final class ImageSupportTests: XCTestCase {
 
     func testSupportedFormatsKeepOriginalBytesAndCreateBoundedThumbnails() throws {
         for type in ClipboardImage.supportedTypes {
-            let data = try Self.fixture(type: type, width: 320, height: 160)
+            let width = type == UTType.webP.identifier ? 160 : 320
+            let height = width / 2
+            let data = try Self.fixture(type: type, width: width, height: height)
             let image = try ImageProcessor.prepare(
                 ImageCandidate(type: type, data: data, sourceApp: "Safari", sourceHost: "example.com")
             )
             XCTAssertEqual(image.data, data)
-            XCTAssertEqual(image.width, 320)
-            XCTAssertEqual(image.height, 160)
-            XCTAssertEqual(image.label, "Image · 320 × 160 · Safari · example.com")
+            XCTAssertEqual(image.width, width)
+            XCTAssertEqual(image.height, height)
+            XCTAssertEqual(image.label, "Image · \(width) × \(height) · Safari · example.com")
             let source = CGImageSourceCreateWithData(try XCTUnwrap(image.thumbnail) as CFData, nil)!
             let thumb = CGImageSourceCreateImageAtIndex(source, 0, nil)!
             XCTAssertEqual(thumb.width, 128)
@@ -92,6 +102,27 @@ final class ImageSupportTests: XCTestCase {
                 ImageCandidate(type: UTType.png.identifier, data: Self.fixture(width: 8193, height: 1))
             )
         )
+    }
+
+    func testAnimatedGIFAndWebPPreserveEveryFrameAndCreateStillThumbnails() throws {
+        for type in [UTType.gif.identifier, UTType.webP.identifier] {
+            let data = try Self.fixture(type: type, frames: 2, width: 160, height: 80)
+            let image = try ImageProcessor.prepare(ImageCandidate(type: type, data: data))
+            XCTAssertTrue(image.isValid)
+            XCTAssertEqual(image.type, type)
+            XCTAssertEqual(image.data, data)
+            let original = try XCTUnwrap(CGImageSourceCreateWithData(try XCTUnwrap(image.data) as CFData, nil))
+            XCTAssertEqual(CGImageSourceGetCount(original), 2)
+            let thumbnail = try XCTUnwrap(CGImageSourceCreateWithData(try XCTUnwrap(image.thumbnail) as CFData, nil))
+            XCTAssertEqual(CGImageSourceGetCount(thumbnail), 1)
+            XCTAssertEqual(CGImageSourceGetType(thumbnail) as String?, UTType.png.identifier)
+            XCTAssertThrowsError(try ImageProcessor.prepare(ImageCandidate(type: UTType.png.identifier, data: data)))
+        }
+    }
+
+    func testExcessiveAnimationFrameCountIsRejected() throws {
+        let data = try Self.fixture(type: UTType.gif.identifier, frames: ClipboardImage.maximumFrames + 1)
+        XCTAssertThrowsError(try ImageProcessor.prepare(ImageCandidate(type: UTType.gif.identifier, data: data)))
     }
 
     func testOrientationUsesDisplayedDimensionsWithoutChangingOriginal() throws {
@@ -169,20 +200,21 @@ final class ImageSupportTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: blob.path))
     }
 
-    func testJPEGAndHEICSurviveEncryptedRestart() async throws {
+    func testAllSupportedFormatsSurviveEncryptedRestart() async throws {
         let file = try temporaryFile()
         let repository = HistoryRepository(fileURL: file, keyStore: TestKeyStore())
         _ = try await repository.load()
         var entries: [ClipboardEntry] = []
-        for type in [UTType.jpeg.identifier, UTType.heic.identifier] {
-            let data = try Self.fixture(type: type, width: 160, height: 80)
+        for type in ClipboardImage.supportedTypes {
+            let frames = [UTType.gif.identifier, UTType.webP.identifier].contains(type) ? 2 : 1
+            let data = try Self.fixture(type: type, frames: frames, width: 160, height: 80)
             let image = try ImageProcessor.prepare(ImageCandidate(type: type, data: data))
             entries.append(ClipboardEntry(image: image))
         }
         try await repository.save(entries, generation: 1)
         let restored = try await HistoryRepository(fileURL: file, keyStore: TestKeyStore()).load()
         XCTAssertEqual(restored, entries)
-        XCTAssertEqual(restored.compactMap { $0.image?.type }, [UTType.jpeg.identifier, UTType.heic.identifier])
+        XCTAssertEqual(restored.compactMap { $0.image?.type }, ClipboardImage.supportedTypes)
     }
 
     func testTamperedBlobDisablesOnlyImageAndResetRemovesBlobs() async throws {

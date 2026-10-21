@@ -8,16 +8,19 @@ struct SettingsView: View {
         Form {
             Section("Clipboard history") {
                 Picker(
-                    "Keep recent items",
+                    "History Limit",
                     selection: Binding(get: { model.history.capacity }, set: { model.setCapacity($0) })
                 ) {
+                    Text("5 items").tag(5)
                     Text("10 items").tag(10)
                     Text("20 items").tag(20)
                 }.disabled(!model.ready)
                 Toggle("Capture new copies", isOn: Binding(get: { !model.paused }, set: { _ in model.togglePause() }))
                     .disabled(!model.ready)
                 Text("Pausing only stops saving new copies. Normal copy and paste keep working.").font(.caption)
-                Text(model.storageStatus).font(.caption).textSelection(.enabled)
+                if !model.storageStatus.isEmpty {
+                    Text(model.storageStatus).font(.caption).textSelection(.enabled)
+                }
                 Button("Retry History Storage") { model.retry() }.disabled(!model.setupComplete)
             }
             Section("Startup") {

@@ -2,6 +2,7 @@ import CryptoKit
 import Darwin
 import Foundation
 import LocalAuthentication
+import OSLog
 import Security
 
 public enum HistoryStorageError: LocalizedError {
@@ -35,6 +36,7 @@ extension HistoryKeyProviding {
 }
 
 public struct HistoryKeyStore: HistoryKeyProviding {
+    private static let logger = Logger(subsystem: "com.alanwychen.rotarystamp", category: "HistoryKeychain")
     private let service: String
     // Keep the installed Keychain service stable so renaming the project preserves existing history.
 
@@ -82,7 +84,15 @@ public struct HistoryKeyStore: HistoryKeyProviding {
         context.interactionNotAllowed = !allowInteraction
         lookup[kSecUseAuthenticationContext as String] = context
         var result: CFTypeRef?
+        // A single macOS lookup can show multiple authorization dialogs. Pair these
+        // events to distinguish system authorization from an additional app lookup.
+        // Only operation metadata is logged, never key bytes or clipboard contents.
+        let requestID = UUID().uuidString
+        Self.logger.notice(
+            "Keychain lookup begin id=\(requestID, privacy: .public) interaction=\(allowInteraction) createIfMissing=\(createIfMissing)"
+        )
         let status = SecItemCopyMatching(lookup as CFDictionary, &result)
+        Self.logger.notice("Keychain lookup end id=\(requestID, privacy: .public) status=\(status)")
         if status == errSecSuccess, let data = result as? Data, data.count == 32 {
             return SymmetricKey(data: data)
         }
@@ -93,6 +103,7 @@ public struct HistoryKeyStore: HistoryKeyProviding {
         insert[kSecValueData as String] = key.withUnsafeBytes { Data($0) }
         insert[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         let added = SecItemAdd(insert as CFDictionary, nil)
+        Self.logger.notice("Keychain insert id=\(requestID, privacy: .public) status=\(added)")
         if added == errSecDuplicateItem {
             return try lookupKey(createIfMissing: false, allowInteraction: allowInteraction)
         }
@@ -115,6 +126,9 @@ public actor HistoryRepository {
 
     public let fileURL: URL
     private let keyStore: any HistoryKeyProviding
+    // Reuse a successful lookup for this repository's lifetime, including recovery.
+    // Failed lookups remain retryable; key material is never cached on disk here.
+    private var cachedKey: SymmetricKey?
     private var latestGeneration: UInt64 = 0
     private var loaded = false
     private var committedBlobs = Set<UUID>()
@@ -129,8 +143,7 @@ public actor HistoryRepository {
         loaded = false
         let exists = FileManager.default.fileExists(atPath: fileURL.path)
         guard exists || !requireExisting else { throw HistoryStorageError.missingFile }
-        let key =
-            try userInitiated ? keyStore.keyForRetry(createIfMissing: !exists) : keyStore.key(createIfMissing: !exists)
+        let key = try sessionKey(createIfMissing: !exists, userInitiated: userInitiated)
         guard exists else {
             loaded = true
             return []
@@ -197,8 +210,7 @@ public actor HistoryRepository {
         guard loaded else { throw HistoryStorageError.invalidFile }
         guard generation >= latestGeneration else { return }
         guard History(entries: entries).entries == entries else { throw HistoryStorageError.invalidEntries }
-        let key =
-            try userInitiated ? keyStore.keyForRetry(createIfMissing: false) : keyStore.key(createIfMissing: false)
+        let key = try sessionKey(createIfMissing: false, userInitiated: userInitiated)
         try writeSnapshot(entries, key: key)
         latestGeneration = generation
     }
@@ -207,10 +219,26 @@ public actor HistoryRepository {
     /// Retain a usable key; recreate a missing/unusable key, then atomically replace the snapshot.
     public func reset(generation: UInt64) throws {
         guard generation >= latestGeneration else { return }
-        let key = try keyStore.keyForReset()
+        let key: SymmetricKey
+        if let cachedKey {
+            key = cachedKey
+        } else {
+            key = try keyStore.keyForReset()
+            cachedKey = key
+        }
         try writeSnapshot([], key: key)
         latestGeneration = generation
         loaded = true
+    }
+
+    private func sessionKey(createIfMissing: Bool, userInitiated: Bool) throws -> SymmetricKey {
+        if let cachedKey { return cachedKey }
+        let key =
+            try userInitiated
+            ? keyStore.keyForRetry(createIfMissing: createIfMissing)
+            : keyStore.key(createIfMissing: createIfMissing)
+        cachedKey = key
+        return key
     }
 
     private func writeSnapshot(_ entries: [ClipboardEntry], key: SymmetricKey) throws {

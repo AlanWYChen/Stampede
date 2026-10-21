@@ -20,8 +20,9 @@ public struct ClipboardImage: Codable, Equatable, Sendable {
         case blobID, type, byteCount, digest, width, height, sourceApp, sourceHost
     }
 
-    /// Prefer lossless clipboard representations, then the original compressed photo formats.
+    /// Prefer animation-capable originals over still fallbacks, then lossless and photo formats.
     public static let supportedTypes = [
+        UTType.gif.identifier, UTType.webP.identifier,
         UTType.png.identifier, UTType.tiff.identifier, UTType.jpeg.identifier, UTType.heic.identifier,
     ]
 
@@ -33,6 +34,7 @@ public struct ClipboardImage: Codable, Equatable, Sendable {
     }
 
     public static let maximumBytes = 20 * 1_048_576
+    public static let maximumFrames = 500
 
     public init(
         type: String,
@@ -94,7 +96,7 @@ public enum ImageProcessingError: LocalizedError {
         switch self {
         case .tooLarge: "Image was too large to save (20 MiB, 16 megapixels, or 8,192 pixels per edge)."
         case .invalid:
-            "Image could not be saved. Only valid, single-frame PNG, TIFF, JPEG, and HEIC images are supported."
+            "Image could not be saved. Supported images are single-frame PNG, TIFF, JPEG, HEIC, and static or animated GIF/WebP (up to 500 frames)."
         }
     }
 }
@@ -115,12 +117,27 @@ public actor ImageProcessor {
                 [kCGImageSourceShouldCache: false] as CFDictionary
             ),
             CGImageSourceGetType(source) as String? == candidate.type,
-            CGImageSourceGetCount(source) == 1,
             CGImageSourceGetStatus(source) == .statusComplete,
             let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
             let w = properties[kCGImagePropertyPixelWidth] as? NSNumber,
             let h = properties[kCGImagePropertyPixelHeight] as? NSNumber
         else { throw ImageProcessingError.invalid }
+        let frameCount = CGImageSourceGetCount(source)
+        let allowsAnimation = [UTType.gif.identifier, UTType.webP.identifier].contains(candidate.type)
+        guard frameCount > 0, frameCount <= ClipboardImage.maximumFrames,
+            frameCount == 1 || allowsAnimation
+        else { throw ImageProcessingError.invalid }
+        // Inspect every frame without decoding full-resolution animation into memory.
+        for index in 0..<frameCount {
+            guard let frame = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any],
+                let frameWidth = (frame[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue,
+                let frameHeight = (frame[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue,
+                CGImageSourceGetStatusAtIndex(source, index) == .statusComplete
+            else { throw ImageProcessingError.invalid }
+            guard frameWidth > 0, frameHeight > 0, frameWidth <= 8192, frameHeight <= 8192,
+                frameWidth * frameHeight <= 16_000_000
+            else { throw ImageProcessingError.tooLarge }
+        }
         let width = w.intValue
         let height = h.intValue
         guard width > 0, height > 0, width <= 8192, height <= 8192,

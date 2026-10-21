@@ -26,6 +26,22 @@ final class HistoryTests: XCTestCase {
         XCTAssertEqual(history.entries.count, 10)
     }
 
+    func testFiveItemLimitTrimsRestoredHistoryAndNewCaptures() {
+        let entries = (0..<10).map { ClipboardEntry(text: "\($0)") }
+        var history = History(entries: entries, capacity: 5)
+        XCTAssertEqual(history.capacity, 5)
+        XCTAssertEqual(history.entries, Array(entries.prefix(5)))
+        history.capture("newest")
+        XCTAssertEqual(history.entries.map(\.text), ["newest", "0", "1", "2", "3"])
+        history.setCapacity(10)
+        for index in 10..<15 { history.capture("\(index)") }
+        XCTAssertEqual(history.entries.count, 10)
+        let newestFive = Array(history.entries.prefix(5))
+        history.setCapacity(5)
+        XCTAssertEqual(history.capacity, 5)
+        XCTAssertEqual(history.entries, newestFive)
+    }
+
     func testExactBytesAndWhitespaceArePreserved() {
         var history = History()
         history.capture("é")

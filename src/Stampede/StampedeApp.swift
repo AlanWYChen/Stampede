@@ -15,7 +15,7 @@ import SwiftUI
             let success = ClipboardSelfTest.run()
             print(
                 success
-                    ? "PASS: native text/PNG/TIFF/JPEG/HEIC clipboard round trips, alpha, exclusions, activation, and clear (private pasteboard)"
+                    ? "PASS: native text/PNG/TIFF/JPEG/HEIC/GIF/WebP clipboard round trips, animation, alpha, exclusions, activation, and clear (private pasteboard)"
                     : "FAIL: native clipboard integration"
             )
             exit(success ? 0 : 1)
@@ -130,7 +130,7 @@ import SwiftUI
                 }
             }
             menu.addItem(.separator())
-            add(model.storageStatus, to: menu)
+            if !model.storageStatus.isEmpty { add(model.storageStatus, to: menu) }
             if let error = model.operationError { add(error, to: menu) }
             if !model.ready || model.storageStatus.contains("not saved") {
                 add("Retry History Storage", to: menu, action: #selector(retry))
@@ -140,19 +140,6 @@ import SwiftUI
             }
             if model.ready {
                 add(model.paused ? "Resume Capture" : "Pause Capture", to: menu, action: #selector(togglePause))
-                let limit = add("History Limit", to: menu)
-                let submenu = NSMenu()
-                for capacity in [10, 20] {
-                    let item = add(
-                        "\(capacity) items",
-                        to: submenu,
-                        action: #selector(setCapacity(_:)),
-                        represented: capacity
-                    )
-                    item.state = capacity == model.history.capacity ? .on : .off
-                }
-                limit.submenu = submenu
-                limit.isEnabled = true
                 add("Clear Clipboard…", to: menu, action: #selector(clearClipboard))
             }
         }
@@ -164,10 +151,6 @@ import SwiftUI
 
     @objc private func selectEntry(_ sender: NSMenuItem) {
         if let id = sender.representedObject as? UUID { model.activate(id) }
-    }
-
-    @objc private func setCapacity(_ sender: NSMenuItem) {
-        if let capacity = sender.representedObject as? Int { model.setCapacity(capacity) }
     }
 
     @objc private func togglePause() { model.togglePause() }
@@ -186,7 +169,7 @@ import SwiftUI
         let alert = NSAlert()
         alert.messageText = "Welcome to Stampede"
         alert.informativeText =
-            "Keep your latest 10 or 20 text and image copies, encrypted on this Mac, even after a restart. Select an older copy from the menu bar, then paste normally on Mac or iPad through Universal Clipboard.\n\nEnabling history also enables launch at login. Unmarked passwords can be captured; you can pause or clear history at any time. macOS may require clipboard access approval."
+            "Keep your latest 5, 10, or 20 text and image copies, encrypted on this Mac, even after a restart. Select an older copy from the menu bar, then paste normally on Mac or iPad through Universal Clipboard.\n\nEnabling history also enables launch at login. Unmarked passwords can be captured; you can pause or clear history at any time. macOS may require clipboard access approval."
         alert.addButton(withTitle: "Enable History & Launch at Login")
         alert.addButton(withTitle: "Not Now")
         if alert.runModal() == .alertFirstButtonReturn { model.completeSetup() }

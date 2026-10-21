@@ -55,7 +55,7 @@ public struct History: Sendable {
     public private(set) var capacity: Int
 
     public init(entries: [ClipboardEntry] = [], capacity: Int = 20) {
-        self.capacity = capacity == 10 ? 10 : 20
+        self.capacity = [5, 10, 20].contains(capacity) ? capacity : 20
         self.entries = []
         var bytes = 0
         for entry in entries where self.entries.count < self.capacity {
@@ -104,7 +104,7 @@ public struct History: Sendable {
     }
 
     public mutating func setCapacity(_ value: Int) {
-        capacity = value == 10 ? 10 : 20
+        capacity = [5, 10, 20].contains(value) ? value : 20
         trim()
     }
 

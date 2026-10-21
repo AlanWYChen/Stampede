@@ -37,7 +37,7 @@ import ServiceManagement
         self.preview = preview
         defaults = .standard
         let capacity = defaults.integer(forKey: "historyCapacity")
-        history = History(capacity: capacity == 10 ? 10 : 20)
+        history = History(capacity: capacity)
         setupComplete = defaults.bool(forKey: "setupComplete")
         paused = defaults.bool(forKey: "capturePaused")
         // Earlier builds had no explicit marker. An already configured install expects saved history.
@@ -135,7 +135,7 @@ import ServiceManagement
                 ready = true
                 loadedOnce = true
                 loading = false
-                storageStatus = "History saved locally · encrypted"
+                storageStatus = ""
                 if !paused {
                     monitor.poll(userInitiated: userInitiated)
                     refreshClipboardAccess()
@@ -313,7 +313,7 @@ import ServiceManagement
                 loadedOnce = true
                 loading = false
                 operationError = nil
-                storageStatus = "History saved locally · encrypted"
+                storageStatus = ""
                 startTimer()
             } catch {
                 loading = false
@@ -357,7 +357,7 @@ import ServiceManagement
                     )
                     if generation == revision {
                         defaults.set(true, forKey: "hasSavedHistory")
-                        storageStatus = "History saved locally · encrypted"
+                        storageStatus = ""
                     }
                     return
                 } catch {

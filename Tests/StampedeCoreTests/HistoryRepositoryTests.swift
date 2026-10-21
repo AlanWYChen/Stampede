@@ -21,12 +21,98 @@ struct LockedKeyStore: HistoryKeyProviding {
     func key(createIfMissing: Bool) throws -> SymmetricKey { throw HistoryStorageError.keychain(-25308) }
 }
 
+/// Reject extra lookups so a regression cannot silently pass by returning the same key again.
+private final class SingleAccessKeyStore: HistoryKeyProviding, @unchecked Sendable {
+    private let lock = NSLock()
+    private var attempts = 0
+    private let failFirstAttempt: Bool
+
+    init(failFirstAttempt: Bool = false) { self.failFirstAttempt = failFirstAttempt }
+
+    func key(createIfMissing: Bool) throws -> SymmetricKey {
+        try lock.withLock {
+            attempts += 1
+            if failFirstAttempt && attempts == 1 { throw HistoryStorageError.keychain(-25308) }
+            guard attempts == (failFirstAttempt ? 2 : 1) else {
+                throw HistoryStorageError.keychain(-25308)
+            }
+            return try TestKeyStore().key(createIfMissing: createIfMissing)
+        }
+    }
+}
+
 final class HistoryRepositoryTests: XCTestCase {
     private func temporaryFile() throws -> URL {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         addTeardownBlock { try? FileManager.default.removeItem(at: folder) }
         return folder.appendingPathComponent("history.enc")
+    }
+
+    func testInitializedKeyIsReusedForSavesReloadAndReset() async throws {
+        let file = try temporaryFile()
+        let repository = HistoryRepository(fileURL: file, keyStore: SingleAccessKeyStore())
+        _ = try await repository.load()
+        let entries = [ClipboardEntry(text: "first copy")]
+        try await repository.save(entries, generation: 1)
+        try await repository.save(entries, generation: 2, userInitiated: true)
+        let restored = try await repository.load(userInitiated: true)
+        XCTAssertEqual(restored, entries)
+        try await repository.reset(generation: 3)
+        try await repository.save([ClipboardEntry(text: "after reset")], generation: 4)
+        let reopened = HistoryRepository(fileURL: file, keyStore: TestKeyStore())
+        let saved = try await reopened.load(requireExisting: true)
+        XCTAssertEqual(saved.map(\.text), ["after reset"])
+    }
+
+    func testExistingHistoryKeyIsReusedAfterLoad() async throws {
+        let file = try temporaryFile()
+        let writer = HistoryRepository(fileURL: file, keyStore: TestKeyStore())
+        _ = try await writer.load()
+        try await writer.save([ClipboardEntry(text: "existing")], generation: 1)
+        let reader = HistoryRepository(fileURL: file, keyStore: SingleAccessKeyStore())
+        _ = try await reader.load(requireExisting: true)
+        let entries = [ClipboardEntry(text: "new copy")]
+        try await reader.save(entries, generation: 1)
+        let restored = try await reader.load()
+        XCTAssertEqual(restored, entries)
+    }
+
+    func testFailedKeyLookupCanBeRetriedAndSuccessfulKeyIsCached() async throws {
+        let file = try temporaryFile()
+        let repository = HistoryRepository(fileURL: file, keyStore: SingleAccessKeyStore(failFirstAttempt: true))
+        do {
+            _ = try await repository.load()
+            XCTFail("The first lookup should fail")
+        } catch HistoryStorageError.keychain {} catch { XCTFail("Unexpected: \(error)") }
+        _ = try await repository.load(userInitiated: true)
+        let entries = [ClipboardEntry(text: "after unlocking")]
+        try await repository.save(entries, generation: 1)
+        let restored = try await repository.load()
+        XCTAssertEqual(restored, entries)
+    }
+
+    func testResetCachesItsKeyForSubsequentSaves() async throws {
+        let file = try temporaryFile()
+        let repository = HistoryRepository(fileURL: file, keyStore: SingleAccessKeyStore())
+        try await repository.reset(generation: 1)
+        let entries = [ClipboardEntry(text: "after recovery")]
+        try await repository.save(entries, generation: 2)
+        let restored = try await repository.load()
+        XCTAssertEqual(restored, entries)
+    }
+
+    func testCorruptHistoryResetReusesSuccessfullyRetrievedKey() async throws {
+        let file = try temporaryFile()
+        try Data("corrupted snapshot".utf8).write(to: file)
+        let repository = HistoryRepository(fileURL: file, keyStore: SingleAccessKeyStore())
+        do {
+            _ = try await repository.load()
+            XCTFail("Corruption should fail")
+        } catch HistoryStorageError.invalidFile {} catch { XCTFail("Unexpected: \(error)") }
+        try await repository.reset(generation: 1)
+        let restored = try await repository.load()
+        XCTAssertTrue(restored.isEmpty)
     }
 
     func testMissingKeyRequiresExplicitResetAndRejectsLateSave() async throws {

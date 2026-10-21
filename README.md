@@ -4,7 +4,7 @@
 
 **Your recent copies, one menu away.**
 
-Stampede is a native macOS menu bar app that remembers your last **10 or 20 text and image copies**, saves them encrypted across restarts, and lets you choose what to paste next.
+Stampede is a native macOS menu bar app that remembers your last **5, 10, or 20 text and image copies**, saves them encrypted across restarts, and lets you choose what to paste next.
 
 [![macOS checks](https://github.com/AlanWYChen/Stampede/actions/workflows/ci.yml/badge.svg)](https://github.com/AlanWYChen/Stampede/actions/workflows/ci.yml)
 
@@ -69,6 +69,7 @@ Select `Alpha`: history becomes `Alpha → Charlie → Bravo`, and your next pas
 | Control | Behavior |
 | --- | --- |
 | **Select an entry** | Makes that text or full-resolution image the active system clipboard. You paste it manually. |
+| **Settings → History Limit** | Keeps the most recent 5, 10, or 20 entries. Reducing the limit removes older entries. |
 | **Pause Capture** | Stops saving new copies. Normal copy/paste and Universal Clipboard keep working; existing entries remain selectable. |
 | **Clear Clipboard** | After confirmation, clears the current Mac clipboard and Stampede’s saved history. |
 | **Try Again** | Retries opening unreadable history or accessing its encryption key. |
@@ -81,6 +82,8 @@ After a restart, Stampede restores your history list **without overwriting the c
 ## Privacy and storage
 
 Stampede keeps history locally. It encrypts the history manifest and separate image blobs using **CryptoKit AES-256-GCM**, with a fresh random nonce for each save. Its random 256-bit key is stored separately in Keychain, with iCloud Keychain synchronization disabled.
+
+After a successful Keychain lookup, the running app caches the key in memory for history saves, reloads, and resets. Failed lookups can be retried. Restarting the app requires retrieving the key from Keychain again.
 
 - Clipboard text, images, source labels, and previews are not logged.
 - Content marked concealed, transient, or automatically generated is excluded.
@@ -105,6 +108,14 @@ Image originals are stored beside it in `images/<random-uuid>.enc`, individually
 
 These identifiers are retained for compatibility with early installations. Clearing or resetting history does not erase copies in backups, items already pasted elsewhere, or data stored on other devices.
 
+To investigate startup authorization prompts, filter the Xcode console for `Keychain lookup` or run this before launching Stampede:
+
+```sh
+log stream --style compact --predicate 'subsystem == "com.alanwychen.rotarystamp" AND category == "HistoryKeychain"'
+```
+
+Each lookup logs a begin/end pair with a request ID and numeric status (`0` means success). These logs contain operation metadata only, without key material or clipboard contents. Two dialogs between the same begin/end pair indicate authorization within one system lookup; multiple pairs indicate separate app lookups. Compare process IDs as well when checking for multiple running builds. The dialog wording alone does not establish the cause. Local ad-hoc rebuilds can require authorization again; use a stable signing identity when testing persistent trust.
+
 </details>
 
 ### Mac, iPad, and iPhone
@@ -115,8 +126,8 @@ Devices must be nearby, signed in to the same Apple Account, and have Wi-Fi, Blu
 
 ## Current limitations
 
-- **Images:** single-frame PNG, TIFF, JPEG, and HEIC clipboard data are supported. PNG, then TIFF, then JPEG, then HEIC is preferred when multiple formats are offered; original bytes are preserved. File-reference-only copies (including Finder copies), file promises, PDFs, animations, and multi-item copies are excluded. When an app such as WeChat supplies both image bytes and a file reference, Stampede saves the supplied image without opening the referenced file. Their normal paste behavior is unaffected.
-- **Bounded history:** 10 or 20 mixed entries; 1 MiB of UTF-8 text per entry; 20 MiB, 16 megapixels, and 8,192 pixels per edge for an image. A 100 MiB total payload budget can evict older entries before the count limit is reached. Oversized images leave existing history intact.
+- **Images:** single-frame PNG, TIFF, JPEG, and HEIC, plus static and animated GIF and WebP clipboard data are supported. GIF, then WebP, then PNG, TIFF, JPEG, and HEIC is preferred when multiple formats are offered, preserving animation over still-image fallbacks. Original bytes, including all animation frames, are preserved for paste; history shows a still thumbnail of the first frame. Animations are limited to 500 frames, with the image dimension limits applied to every frame. File-reference-only copies (including Finder copies), file promises, PDFs, multi-frame images in other formats, and multi-item copies are excluded. When an app such as WeChat supplies both image bytes and a file reference, Stampede saves the supplied image without opening the referenced file. Their normal paste behavior is unaffected.
+- **Bounded history:** 5, 10, or 20 mixed entries; 1 MiB of UTF-8 text per entry; 20 MiB, 16 megapixels, and 8,192 pixels per edge for an image. A 100 MiB total payload budget can evict older entries before the count limit is reached. Oversized images leave existing history intact.
 - **Polling:** very rapid copies between checks can be missed. Stampede cannot reconstruct copies made while it was closed or the Mac was asleep.
 - **Local builds:** ad-hoc signed by default and not sandboxed. No notarized installer or automatic updater is provided.
 
@@ -137,7 +148,7 @@ For a sample-data preview that does not access your clipboard, save history, or 
 open -n -a "$PWD/build/Stampede.app" --args --preview
 ```
 
-Quit the preview before running the real app. Permission dialogs, automatic launch after reboot, and cross-device delivery still need testing in a real user session. Image support has synthetic PNG/TIFF/JPEG/HEIC private-pasteboard coverage; actual Safari/Chrome, Preview, Notes, Messages, image-editor, and iPad/iPhone compatibility and color-profile appearance still require manual verification.
+Quit the preview before running the real app. Permission dialogs, automatic launch after reboot, and cross-device delivery still need testing in a real user session. Image support has synthetic PNG/TIFF/JPEG/HEIC/GIF/WebP private-pasteboard coverage (including animated GIF/WebP); actual Safari/Chrome, Preview, Notes, Messages, image-editor, and iPad/iPhone compatibility and color-profile appearance still require manual verification.
 
 Image validation/downsampling and encrypted disk work run off the main actor. Validated encoded originals stay in memory (up to the 100 MiB retention budget), so selection does not wait for disk I/O or overwrite a newer copy after a delayed load. Queued image candidates have a separate combined 20 MiB limit; thumbnails have a 128-pixel longest edge. These are payload limits, not absolute peak RAM/disk guarantees: pasteboard providers may allocate data before its size can be checked, and decoders/encryption/atomic replacement require additional memory and disk space.
 
