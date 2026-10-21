@@ -17,6 +17,13 @@ struct MissingKeyStore: HistoryKeyProviding {
 struct LockedKeyStore: HistoryKeyProviding {
     func key(createIfMissing: Bool) throws -> SymmetricKey { throw HistoryStorageError.keychain(-25308) }
 }
+final class CountingKeyStore: HistoryKeyProviding, @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    var calls: Int { lock.withLock { count } }
+    func key(createIfMissing: Bool) throws -> SymmetricKey { lock.withLock { count += 1 }; return SymmetricKey(data: Data(repeating: 42, count: 32)) }
+    func keyForReset() throws -> SymmetricKey { lock.withLock { count += 1 }; return SymmetricKey(data: Data(repeating: 7, count: 32)) }
+}
 
 final class HistoryRepositoryTests: XCTestCase {
     private func temporaryFile() throws -> URL {
@@ -130,6 +137,26 @@ final class HistoryRepositoryTests: XCTestCase {
         do { _ = try await wrongKey.load(); XCTFail("Wrong key should fail") } catch {}
         do { try await wrongKey.save([], generation: 2); XCTFail("Failed load must block writes") } catch {}
         XCTAssertEqual(try Data(contentsOf: file), original)
+    }
+
+    func testSavesReuseKeyFromLoadOrResetWithoutKeychainLookups() async throws {
+        let file = try temporaryFile()
+        let store = CountingKeyStore()
+        let repository = HistoryRepository(fileURL: file, keyStore: store)
+        _ = try await repository.load()
+        try await repository.save([ClipboardEntry(text: "first")], generation: 1)
+        try await repository.save([ClipboardEntry(text: "second")], generation: 2)
+        XCTAssertEqual(store.calls, 1)
+        let reloaded = try await repository.load()
+        XCTAssertEqual(reloaded.map(\.text), ["second"])
+        try await repository.save([ClipboardEntry(text: "third")], generation: 3)
+        XCTAssertEqual(store.calls, 2)
+        try await repository.reset(generation: 4)
+        try await repository.save([ClipboardEntry(text: "after reset")], generation: 5, userInitiated: true)
+        XCTAssertEqual(store.calls, 3)
+        let reopened = HistoryRepository(fileURL: file, keyStore: TestKeyStore(data: Data(repeating: 7, count: 32)))
+        let restored = try await reopened.load()
+        XCTAssertEqual(restored.map(\.text), ["after reset"])
     }
 
     func testUnsupportedSchemaAndInvalidSnapshotAreRejected() async throws {

@@ -100,6 +100,7 @@ public actor HistoryRepository {
     public let fileURL: URL
     private let keyStore: any HistoryKeyProviding
     private var latestGeneration: UInt64 = 0
+    private var cachedKey: SymmetricKey?
     private var loaded = false
     private var committedBlobs = Set<UUID>()
     private let maximumFileBytes = 24 * 1_048_576
@@ -110,11 +111,11 @@ public actor HistoryRepository {
     }
 
     public func load(requireExisting: Bool = false, userInitiated: Bool = false) throws -> [ClipboardEntry] {
-        loaded = false
+        loaded = false; cachedKey = nil
         let exists = FileManager.default.fileExists(atPath: fileURL.path)
         guard exists || !requireExisting else { throw HistoryStorageError.missingFile }
         let key = try userInitiated ? keyStore.keyForRetry(createIfMissing: !exists) : keyStore.key(createIfMissing: !exists)
-        guard exists else { loaded = true; return [] }
+        guard exists else { loaded = true; cachedKey = key; return [] }
         let attributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
         guard (attributes[.size] as? NSNumber)?.intValue ?? Int.max <= maximumFileBytes else {
             throw HistoryStorageError.invalidFile
@@ -155,7 +156,7 @@ public actor HistoryRepository {
             }
             entries[index].image = image
         }
-        loaded = true
+        loaded = true; cachedKey = key
         return entries
     }
 
@@ -164,7 +165,7 @@ public actor HistoryRepository {
         guard loaded else { throw HistoryStorageError.invalidFile }
         guard generation >= latestGeneration else { return }
         guard History(entries: entries).entries == entries else { throw HistoryStorageError.invalidEntries }
-        let key = try userInitiated ? keyStore.keyForRetry(createIfMissing: false) : keyStore.key(createIfMissing: false)
+        let key = try cachedKey ?? (userInitiated ? keyStore.keyForRetry(createIfMissing: false) : keyStore.key(createIfMissing: false))
         try writeSnapshot(entries, key: key)
         latestGeneration = generation
     }
@@ -174,6 +175,7 @@ public actor HistoryRepository {
     public func reset(generation: UInt64) throws {
         guard generation >= latestGeneration else { return }
         let key = try keyStore.keyForReset()
+        cachedKey = key
         try writeSnapshot([], key: key)
         latestGeneration = generation
         loaded = true
