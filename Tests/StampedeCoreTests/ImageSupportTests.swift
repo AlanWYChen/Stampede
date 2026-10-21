@@ -42,6 +42,21 @@ final class ImageSupportTests: XCTestCase {
             }
         }
     }
+    func testLongHostLabelKeepsRegistrableEnd() {
+        let host = "www.apple.com." + String(repeating: "a", count: 28) + ".evil.example"
+        let image = ClipboardImage(type: UTType.png.identifier, data: Data([1]), width: 1, height: 1,
+                                   sourceApp: "Safari Technology Preview", sourceHost: host)
+        XCTAssertEqual(image.label, "Image · 1 × 1 · Safari Technology Previe… · …" + String(repeating: "a", count: 27) + ".evil.example")
+    }
+    func testCapturedHostsAreLowercaseASCIIAndKeepTheirEnd() {
+        XCTAssertEqual(ClipboardImage.sanitizedHost(fromURL: "HTTPS://WWW.Example.COM/image.png"), "www.example.com")
+        XCTAssertNil(ClipboardImage.sanitizedHost(fromURL: "https://www.apple.com%20login.evil.example/image.png"))
+        XCTAssertNil(ClipboardImage.sanitizedHost(fromURL: "ftp://example.com/image.png"))
+        XCTAssertNil(ClipboardImage.sanitizedHost(fromURL: nil))
+        XCTAssertTrue(ClipboardImage.sanitizedHost(fromURL: "https://\u{430}pple.com/image.png")?.unicodeScalars.allSatisfy(\.isASCII) ?? true)
+        let long = Array(repeating: "abcdefghi", count: 22).joined(separator: ".") + ".evil.example"
+        XCTAssertEqual(ClipboardImage.sanitizedHost(fromURL: "https://\(long)/image.png"), String(long.suffix(200)))
+    }
     func testMalformedMismatchedMultiFrameAndOversizedImagesAreRejected() throws {
         XCTAssertThrowsError(try ImageProcessor.prepare(ImageCandidate(type: UTType.png.identifier, data: Data("no image".utf8))))
         XCTAssertThrowsError(try ImageProcessor.prepare(ImageCandidate(type: UTType.tiff.identifier, data: Self.fixture())))

@@ -38,11 +38,9 @@ import StampedeCore
                 return .rejectedImage(ImageProcessingError.tooLarge.localizedDescription)
             }
             // A URL is optional context supplied by the copying app, never inferred from browser tabs.
-            let url = item.string(forType: .URL).flatMap(URL.init(string:))
-            let host = url.flatMap { ["http", "https"].contains($0.scheme?.lowercased() ?? "") ? $0.host : nil }
             return .image(ImageCandidate(type: type.rawValue, data: data,
                 sourceApp: NSWorkspace.shared.frontmostApplication?.localizedName.map { String($0.prefix(64)) },
-                sourceHost: host.map { String($0.prefix(200)) }))
+                sourceHost: ClipboardImage.sanitizedHost(fromURL: item.string(forType: .URL))))
         }
         guard !item.types.contains(where: { UTType($0.rawValue)?.conforms(to: .image) == true }) else { return .excluded }
         guard item.types.contains(.string) else { return .excluded }
