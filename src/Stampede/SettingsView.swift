@@ -21,7 +21,9 @@ struct SettingsView: View {
                 if !model.storageStatus.isEmpty {
                     Text(model.storageStatus).font(.caption).textSelection(.enabled)
                 }
-                Button("Retry History Storage") { model.retry() }.disabled(!model.setupComplete)
+                if let failure = model.storageFailure {
+                    Button(failure.retryTitle) { model.retry() }
+                }
             }
             Section("Startup") {
                 Toggle(

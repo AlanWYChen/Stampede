@@ -7,9 +7,21 @@ import ServiceManagement
 #endif
 
 @MainActor final class AppModel: ObservableObject {
+    enum StorageFailure {
+        case loading, saving
+
+        var retryTitle: String {
+            switch self {
+            case .loading: "Retry Loading History"
+            case .saving: "Retry Saving History"
+            }
+        }
+    }
+
     @Published private(set) var history: History
     @Published private(set) var currentID: UUID?
     @Published private(set) var storageStatus = "Loading saved history…"
+    @Published private(set) var storageFailure: StorageFailure?
     @Published private(set) var accessRequired = false
     @Published private(set) var accessState: ClipboardAccessState = .unknown
     @Published private(set) var accessFeedback: String?
@@ -123,6 +135,7 @@ import ServiceManagement
         guard setupComplete, !preview, !loading, !loadedOnce else { return }
         loading = true
         storageStatus = "Loading saved history…"
+        storageFailure = nil
         Task {
             do {
                 let entries = try await repository.load(
@@ -147,6 +160,7 @@ import ServiceManagement
             } catch {
                 loading = false
                 storageStatus = "History unavailable: \(error.localizedDescription)"
+                storageFailure = .loading
                 onRecoveryNeeded?(error.localizedDescription)
             }
         }
@@ -305,6 +319,7 @@ import ServiceManagement
         timer?.invalidate()
         timer = nil
         storageStatus = "Resetting saved history…"
+        storageFailure = nil
         Task {
             do {
                 try await repository.reset(generation: revision)
@@ -319,6 +334,7 @@ import ServiceManagement
             } catch {
                 loading = false
                 storageStatus = "History could not be reset: \(error.localizedDescription)"
+                storageFailure = .loading
                 onRecoveryNeeded?(error.localizedDescription)
             }
         }
@@ -343,6 +359,7 @@ import ServiceManagement
         let revision = generation
         let entries = history.entries
         storageStatus = "Saving history…"
+        storageFailure = nil
         saveTask?.cancel()
         saveTask = Task {
             if !immediate {
@@ -359,12 +376,14 @@ import ServiceManagement
                     if generation == revision {
                         defaults.set(true, forKey: "hasSavedHistory")
                         storageStatus = ""
+                        storageFailure = nil
                     }
                     return
                 } catch {
                     guard generation == revision else { return }
                     if attempt == 3, entries.isEmpty, await erase(revision) { return }
                     storageStatus = "History changes are not saved: \(error.localizedDescription)"
+                    storageFailure = .saving
                     if attempt == 3, error is HistoryStorageError { onRecoveryNeeded?(error.localizedDescription) }
                     if attempt < 3 {
                         do { try await Task.sleep(for: .seconds(1 << attempt)) } catch { return }
@@ -385,10 +404,12 @@ import ServiceManagement
         do {
             try await repository.save(history.entries, generation: generation)
             defaults.set(true, forKey: "hasSavedHistory")
+            storageFailure = nil
             return true
         } catch {
             if history.entries.isEmpty, await erase(generation) { return true }
             storageStatus = "History changes are not saved: \(error.localizedDescription)"
+            storageFailure = .saving
             startTimer()
             return false
         }
@@ -399,7 +420,10 @@ import ServiceManagement
         // Start fresh next launch instead of reporting the removed file as missing. Harmless if the files remain.
         defaults.set(false, forKey: "hasSavedHistory")
         do { try await repository.erase(generation: revision) } catch { return false }
-        if generation == revision { storageStatus = "History cleared" }
+        if generation == revision {
+            storageStatus = "History cleared"
+            storageFailure = nil
+        }
         return true
     }
 
