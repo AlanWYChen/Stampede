@@ -132,7 +132,7 @@ public actor HistoryRepository {
     private var latestGeneration: UInt64 = 0
     private var loaded = false
     private var committedBlobs = Set<UUID>()
-    private let maximumFileBytes = 24 * 1_048_576
+    private let maximumFileBytes = 48 * 1_048_576
 
     public init(fileURL: URL, keyStore: any HistoryKeyProviding = HistoryKeyStore()) {
         self.fileURL = fileURL
@@ -266,6 +266,7 @@ public actor HistoryRepository {
         encoder.outputFormat = .binary
         let plaintext = try encoder.encode(Snapshot(version: 2, entries: entries))
         let encrypted = try AES.GCM.seal(plaintext, using: key).combined!
+        guard encrypted.count <= maximumFileBytes else { throw HistoryStorageError.invalidEntries }
         try atomicWrite(encrypted, to: fileURL)
         let retained = Set(images.map(\.blobID))
         let directory = fileURL.deletingLastPathComponent().appendingPathComponent("images")

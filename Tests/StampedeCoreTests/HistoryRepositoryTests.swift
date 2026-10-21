@@ -210,6 +210,24 @@ final class HistoryRepositoryTests: XCTestCase {
         XCTAssertEqual(permissions?.intValue, 0o600)
     }
 
+    func testFullHistoryOfMaximumUnicodeEntriesSurvivesReload() async throws {
+        let file = try temporaryFile()
+        let repository = HistoryRepository(fileURL: file, keyStore: TestKeyStore())
+        _ = try await repository.load()
+        // Binary plists store non-ASCII text as UTF-16, so each entry nearly doubles on disk.
+        let entries = (0..<20).map {
+            ClipboardEntry(
+                text: String(format: "%02d", $0) + String(repeating: "a", count: History.maximumEntryBytes - 4)
+                    + "\u{E9}"
+            )
+        }
+        XCTAssertTrue(entries.allSatisfy { $0.text.utf8.count == History.maximumEntryBytes })
+        try await repository.save(entries, generation: 1)
+        let reopened = HistoryRepository(fileURL: file, keyStore: TestKeyStore())
+        let restored = try await reopened.load(requireExisting: true)
+        XCTAssertTrue(restored == entries)
+    }
+
     func testClearCannotBeUndoneByLateSave() async throws {
         let file = try temporaryFile()
         let repository = HistoryRepository(fileURL: file, keyStore: TestKeyStore())
