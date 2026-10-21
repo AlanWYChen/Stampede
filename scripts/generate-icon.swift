@@ -10,8 +10,9 @@ import UniformTypeIdentifiers
             throw CocoaError(.fileReadCorruptFile)
         }
         try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
-        for size in [16, 32, 128, 256, 512] {
-            for scale in [1, 2] {
+        // Keep the ICNS compact: 256 pixels is the largest representation.
+        for size in [16, 32, 128, 256] {
+            for scale in [1, 2] where size * scale <= 256 {
                 // Resize the supplied artwork without redrawing, cropping, or removing its background.
                 guard
                     let image = CGImageSourceCreateThumbnailAtIndex(
