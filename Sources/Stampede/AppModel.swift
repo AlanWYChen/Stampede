@@ -244,7 +244,8 @@ import StampedeCore
         history.clear()
         currentID = nil
         operationError = nil
-        if !preview { monitor.clearClipboard(); scheduleSave(immediate: true) }
+        // Clear is explicit and confirmed, so its save may ask to unlock the Keychain.
+        if !preview { monitor.clearClipboard(); scheduleSave(immediate: true, userInitiated: true) }
     }
 
     func resetHistory() {
@@ -253,6 +254,9 @@ import StampedeCore
         saveTask?.cancel()
         generation += 1
         let revision = generation
+        // Unsaved entries are discarded on every path from here: reset clears them and Try Again reloads from disk.
+        history.clear()
+        currentID = nil
         ready = false
         loading = true
         timer?.invalidate()
@@ -261,8 +265,6 @@ import StampedeCore
         Task {
             do {
                 try await repository.reset(generation: revision)
-                history.clear()
-                currentID = nil
                 monitor.baseline()
                 defaults.set(true, forKey: "hasSavedHistory")
                 ready = true
@@ -310,6 +312,7 @@ import StampedeCore
                     return
                 } catch {
                     guard generation == revision else { return }
+                    if attempt == 3, entries.isEmpty, await erase(revision) { return }
                     storageStatus = "History changes are not saved: \(error.localizedDescription)"
                     if attempt == 3, error is HistoryStorageError { onRecoveryNeeded?(error.localizedDescription) }
                     if attempt < 3 {
@@ -334,10 +337,20 @@ import StampedeCore
             defaults.set(true, forKey: "hasSavedHistory")
             return true
         } catch {
+            if history.entries.isEmpty, await erase(generation) { return true }
             storageStatus = "History changes are not saved: \(error.localizedDescription)"
             startTimer()
             return false
         }
+    }
+
+    /// Saving an empty history needs the Keychain key; deleting the saved files reaches the same state without it.
+    private func erase(_ revision: UInt64) async -> Bool {
+        // Start fresh next launch instead of reporting the removed file as missing. Harmless if the files remain.
+        defaults.set(false, forKey: "hasSavedHistory")
+        do { try await repository.erase(generation: revision) } catch { return false }
+        if generation == revision { storageStatus = "History cleared" }
+        return true
     }
 
     func refreshLoginStatus() {

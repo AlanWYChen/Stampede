@@ -157,7 +157,7 @@ import Combine
         let response = alert.runModal()
         showingRecovery = false
         if response == .alertFirstButtonReturn { model.retry() }
-        else if response == .alertSecondButtonReturn { model.resetHistory() }
+        else if response == .alertSecondButtonReturn { model.resetHistory(); rebuildMenu() }
     }
 
     @objc private func clearClipboard() {
@@ -167,8 +167,10 @@ import Combine
         alert.informativeText = "This clears the current Mac clipboard and permanently removes all clipboard history saved by Stampede. It does not erase items already pasted or stored on your other devices."
         alert.addButton(withTitle: "Clear Clipboard").hasDestructiveAction = true
         alert.addButton(withTitle: "Cancel")
-        if alert.runModal() == .alertFirstButtonReturn { model.clearClipboard() }
+        if alert.runModal() == .alertFirstButtonReturn { model.clearClipboard(); rebuildMenu() }
     }
+    /// Drop cleared titles and thumbnails now rather than when the menu next opens.
+    private func rebuildMenu() { if let menu = statusItem?.menu { rebuild(menu) } }
     @objc private func showSettings() {
         if settingsWindow == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 720),
