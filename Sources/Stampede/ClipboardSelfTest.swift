@@ -47,11 +47,13 @@ import StampedeCore
         defer { board.releaseGlobally() }
         let client = SystemClipboardClient(pasteboard: board)
         guard client.write("Alpha\n🦬"), client.read() == .text("Alpha\n🦬") else { return false }
-        let concealed = NSPasteboardItem()
-        concealed.setString("ignored", forType: .string)
-        concealed.setData(Data(), forType: .init("org.nspasteboard.ConcealedType"))
-        board.clearContents()
-        guard board.writeObjects([concealed]), client.read() == .excluded else { return false }
+        for marker in SystemClipboardClient.excludedTypes {
+            let marked = NSPasteboardItem()
+            marked.setString("ignored", forType: .string)
+            marked.setData(Data(), forType: .init(marker))
+            board.clearContents()
+            guard board.writeObjects([marked]), client.read() == .excluded else { return false }
+        }
         let file = NSPasteboardItem()
         file.setString("file:///tmp/example.txt", forType: .fileURL)
         file.setString("example.txt", forType: .string)
