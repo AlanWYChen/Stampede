@@ -30,11 +30,13 @@ for config in ('Debug', 'Release'):
         'ALWAYS_SEARCH_USER_PATHS': 'NO', 'PRODUCT_NAME': 'Stampede', 'PRODUCT_BUNDLE_IDENTIFIER': 'com.alanwychen.rotarystamp',
         'SWIFT_VERSION': '6.0', 'MACOSX_DEPLOYMENT_TARGET': '14.0', 'SDKROOT': 'macosx',
         'INFOPLIST_FILE': 'Resources/Info.plist', 'GENERATE_INFOPLIST_FILE': 'NO',
-        'CODE_SIGN_STYLE': 'Manual', 'CODE_SIGN_IDENTITY': '-', 'COMBINE_HIDPI_IMAGES': 'YES',
+        'CODE_SIGN_STYLE': 'Manual', 'CODE_SIGN_IDENTITY': '-', 'ENABLE_HARDENED_RUNTIME': 'YES', 'COMBINE_HIDPI_IMAGES': 'YES',
         'SWIFT_OPTIMIZATION_LEVEL': '-Onone' if config == 'Debug' else '-O',
         'SWIFT_ACTIVE_COMPILATION_CONDITIONS': 'DEBUG' if config == 'Debug' else '',
         'LD_RUNPATH_SEARCH_PATHS': '$(inherited) @executable_path/../Frameworks'
     }
+    if config == 'Release':
+        settings['CODE_SIGN_INJECT_BASE_ENTITLEMENTS'] = 'NO'
     body = ' '.join(f'{key} = {quote(value)};' for key, value in settings.items())
     configs.append(obj(config, f'isa = XCBuildConfiguration; buildSettings = {{ {body} }}; name = {config};'))
 configlist = obj('configlist', f'isa = XCConfigurationList; buildConfigurations = ({", ".join(configs)}); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;')
