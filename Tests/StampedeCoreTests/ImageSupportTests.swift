@@ -1,34 +1,55 @@
-import XCTest
 import CryptoKit
 import ImageIO
 import UniformTypeIdentifiers
+import XCTest
+
 @testable import StampedeCore
 
 final class ImageSupportTests: XCTestCase {
-    static func fixture(type: String = UTType.png.identifier, frames: Int = 1, width: Int = 8, height: Int = 4,
-                        orientation: Int = 1) throws -> Data {
+    static func fixture(
+        type: String = UTType.png.identifier,
+        frames: Int = 1,
+        width: Int = 8,
+        height: Int = 4,
+        orientation: Int = 1
+    ) throws -> Data {
         let pixels = [UInt8](repeating: 128, count: width * height * 4)
         let provider = CGDataProvider(data: Data(pixels) as CFData)!
-        let image = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
-                            bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
-                            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
-                            provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)!
+        let image = CGImage(
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bitsPerPixel: 32,
+            bytesPerRow: width * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+            provider: provider,
+            decode: nil,
+            shouldInterpolate: false,
+            intent: .defaultIntent
+        )!
         let data = NSMutableData()
         let destination = CGImageDestinationCreateWithData(data, type as CFString, frames, nil)!
-        for _ in 0..<frames { CGImageDestinationAddImage(destination, image, [kCGImagePropertyOrientation: orientation] as CFDictionary) }
+        for _ in 0..<frames {
+            CGImageDestinationAddImage(destination, image, [kCGImagePropertyOrientation: orientation] as CFDictionary)
+        }
         XCTAssertTrue(CGImageDestinationFinalize(destination))
         return data as Data
     }
+
     private func temporaryFile() throws -> URL {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
         return directory.appendingPathComponent("history.enc")
     }
+
     func testSupportedFormatsKeepOriginalBytesAndCreateBoundedThumbnails() throws {
         for type in ClipboardImage.supportedTypes {
             let data = try Self.fixture(type: type, width: 320, height: 160)
-            let image = try ImageProcessor.prepare(ImageCandidate(type: type, data: data, sourceApp: "Safari", sourceHost: "example.com"))
+            let image = try ImageProcessor.prepare(
+                ImageCandidate(type: type, data: data, sourceApp: "Safari", sourceHost: "example.com")
+            )
             XCTAssertEqual(image.data, data)
             XCTAssertEqual(image.width, 320)
             XCTAssertEqual(image.height, 160)
@@ -42,28 +63,67 @@ final class ImageSupportTests: XCTestCase {
             }
         }
     }
+
     func testLongHostLabelKeepsRegistrableEnd() {
         let host = "www.apple.com." + String(repeating: "a", count: 28) + ".evil.example"
-        let image = ClipboardImage(type: UTType.png.identifier, data: Data([1]), width: 1, height: 1,
-                                   sourceApp: "Safari Technology Preview", sourceHost: host)
-        XCTAssertEqual(image.label, "Image · 1 × 1 · Safari Technology Previe… · …" + String(repeating: "a", count: 27) + ".evil.example")
+        let image = ClipboardImage(
+            type: UTType.png.identifier,
+            data: Data([1]),
+            width: 1,
+            height: 1,
+            sourceApp: "Safari Technology Preview",
+            sourceHost: host
+        )
+        XCTAssertEqual(
+            image.label,
+            "Image · 1 × 1 · Safari Technology Previe… · …" + String(repeating: "a", count: 27) + ".evil.example"
+        )
     }
+
     func testCapturedHostsAreLowercaseASCIIAndKeepTheirEnd() {
         XCTAssertEqual(ClipboardImage.sanitizedHost(fromURL: "HTTPS://WWW.Example.COM/image.png"), "www.example.com")
         XCTAssertNil(ClipboardImage.sanitizedHost(fromURL: "https://www.apple.com%20login.evil.example/image.png"))
         XCTAssertNil(ClipboardImage.sanitizedHost(fromURL: "ftp://example.com/image.png"))
         XCTAssertNil(ClipboardImage.sanitizedHost(fromURL: nil))
-        XCTAssertTrue(ClipboardImage.sanitizedHost(fromURL: "https://\u{430}pple.com/image.png")?.unicodeScalars.allSatisfy(\.isASCII) ?? true)
+        XCTAssertTrue(
+            ClipboardImage.sanitizedHost(fromURL: "https://\u{430}pple.com/image.png")?.unicodeScalars.allSatisfy(
+                \.isASCII
+            ) ?? true
+        )
         let long = Array(repeating: "abcdefghi", count: 22).joined(separator: ".") + ".evil.example"
         XCTAssertEqual(ClipboardImage.sanitizedHost(fromURL: "https://\(long)/image.png"), String(long.suffix(200)))
     }
+
     func testMalformedMismatchedMultiFrameAndOversizedImagesAreRejected() throws {
-        XCTAssertThrowsError(try ImageProcessor.prepare(ImageCandidate(type: UTType.png.identifier, data: Data("no image".utf8))))
-        XCTAssertThrowsError(try ImageProcessor.prepare(ImageCandidate(type: UTType.tiff.identifier, data: Self.fixture())))
-        XCTAssertThrowsError(try ImageProcessor.prepare(ImageCandidate(type: UTType.tiff.identifier, data: Self.fixture(type: UTType.tiff.identifier, frames: 2))))
-        XCTAssertThrowsError(try ImageProcessor.prepare(ImageCandidate(type: UTType.png.identifier, data: Data(repeating: 0, count: ClipboardImage.maximumBytes + 1))))
-        XCTAssertThrowsError(try ImageProcessor.prepare(ImageCandidate(type: UTType.png.identifier, data: Self.fixture(width: 8193, height: 1))))
+        XCTAssertThrowsError(
+            try ImageProcessor.prepare(ImageCandidate(type: UTType.png.identifier, data: Data("no image".utf8)))
+        )
+        XCTAssertThrowsError(
+            try ImageProcessor.prepare(ImageCandidate(type: UTType.tiff.identifier, data: Self.fixture()))
+        )
+        XCTAssertThrowsError(
+            try ImageProcessor.prepare(
+                ImageCandidate(
+                    type: UTType.tiff.identifier,
+                    data: Self.fixture(type: UTType.tiff.identifier, frames: 2)
+                )
+            )
+        )
+        XCTAssertThrowsError(
+            try ImageProcessor.prepare(
+                ImageCandidate(
+                    type: UTType.png.identifier,
+                    data: Data(repeating: 0, count: ClipboardImage.maximumBytes + 1)
+                )
+            )
+        )
+        XCTAssertThrowsError(
+            try ImageProcessor.prepare(
+                ImageCandidate(type: UTType.png.identifier, data: Self.fixture(width: 8193, height: 1))
+            )
+        )
     }
+
     func testOrientationUsesDisplayedDimensionsWithoutChangingOriginal() throws {
         let data = try Self.fixture(type: UTType.tiff.identifier, orientation: 6)
         let image = try ImageProcessor.prepare(ImageCandidate(type: UTType.tiff.identifier, data: data))
@@ -71,6 +131,7 @@ final class ImageSupportTests: XCTestCase {
         XCTAssertEqual(image.height, 8)
         XCTAssertEqual(image.data, data)
     }
+
     func testDelayedImageKeepsObservedOrderAndCannotDemoteSelectedImage() throws {
         let image = try ImageProcessor.prepare(ImageCandidate(type: UTType.png.identifier, data: Self.fixture()))
         let start = Date()
@@ -83,22 +144,31 @@ final class ImageSupportTests: XCTestCase {
         XCTAssertEqual(history.entries.first?.id, id)
         XCTAssertEqual(history.entries.count, 2)
     }
+
     func testMixedByteBudgetEvictsOldestAndOversizeDoesNotEvict() {
         var history = History()
         for index in 0..<6 {
             let data = Data(repeating: UInt8(index), count: ClipboardImage.maximumBytes)
-            history.capture(ClipboardEntry(image: ClipboardImage(type: UTType.png.identifier, data: data, width: 1, height: 1)))
+            history.capture(
+                ClipboardEntry(image: ClipboardImage(type: UTType.png.identifier, data: data, width: 1, height: 1))
+            )
         }
         XCTAssertEqual(history.entries.count, 5)
         let ids = history.entries.map(\.id)
-        let bad = ClipboardImage(type: UTType.png.identifier, data: Data(repeating: 0, count: ClipboardImage.maximumBytes + 1), width: 1, height: 1)
+        let bad = ClipboardImage(
+            type: UTType.png.identifier,
+            data: Data(repeating: 0, count: ClipboardImage.maximumBytes + 1),
+            width: 1,
+            height: 1
+        )
         XCTAssertNil(history.capture(ClipboardEntry(image: bad)))
         XCTAssertEqual(history.entries.map(\.id), ids)
     }
+
     func testCaptureTicketsInvalidateOnLifecycleChangesAndEviction() {
         var coordinator = CaptureCoordinator()
         let old = coordinator.reserve(bytes: 20)!
-        coordinator.invalidate() // Clear, reset, pause, and capacity changes all invalidate pending jobs.
+        coordinator.invalidate()  // Clear, reset, pause, and capacity changes all invalidate pending jobs.
         XCTAssertFalse(coordinator.accepts(old, capacity: 20))
         coordinator.finish(old)
         let delayed = coordinator.reserve(bytes: ClipboardImage.maximumBytes)!
@@ -108,6 +178,7 @@ final class ImageSupportTests: XCTestCase {
         coordinator.finish(delayed)
         XCTAssertNotNil(coordinator.reserve(bytes: 1))
     }
+
     func testEncryptedImagesReloadAndReorderingDoesNotRewriteBlob() async throws {
         let file = try temporaryFile()
         let repository = HistoryRepository(fileURL: file, keyStore: TestKeyStore())
@@ -127,6 +198,7 @@ final class ImageSupportTests: XCTestCase {
         try await reopened.save(loaded, generation: 2)
         XCTAssertFalse(FileManager.default.fileExists(atPath: blob.path))
     }
+
     func testJPEGAndHEICSurviveEncryptedRestart() async throws {
         let file = try temporaryFile()
         let repository = HistoryRepository(fileURL: file, keyStore: TestKeyStore())
@@ -150,7 +222,9 @@ final class ImageSupportTests: XCTestCase {
         let image = try ImageProcessor.prepare(ImageCandidate(type: UTType.png.identifier, data: Self.fixture()))
         try await repository.save([ClipboardEntry(image: image), ClipboardEntry(text: "healthy")], generation: 1)
         let blob = file.deletingLastPathComponent().appendingPathComponent("images/\(image.blobID.uuidString).enc")
-        var bytes = try Data(contentsOf: blob); bytes[bytes.count - 1] ^= 1; try bytes.write(to: blob)
+        var bytes = try Data(contentsOf: blob)
+        bytes[bytes.count - 1] ^= 1
+        try bytes.write(to: blob)
         let reopened = HistoryRepository(fileURL: file, keyStore: TestKeyStore())
         let loaded = try await reopened.load()
         XCTAssertEqual(loaded.count, 2)
@@ -172,11 +246,25 @@ final class ImageSupportTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: staging.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: unrelated.path))
     }
+
     func testLegacyV1MigrationPreservesIdentityOrderAndTimestamps() async throws {
-        struct LegacyEntry: Codable { let id: UUID; let text: String; let capturedAt: Date; let lastUsedAt: Date }
-        struct Legacy: Codable { let version: Int; let entries: [LegacyEntry] }
+        struct LegacyEntry: Codable {
+            let id: UUID
+            let text: String
+            let capturedAt: Date
+            let lastUsedAt: Date
+        }
+        struct Legacy: Codable {
+            let version: Int
+            let entries: [LegacyEntry]
+        }
         let file = try temporaryFile()
-        let old = LegacyEntry(id: UUID(), text: "e\u{301}\n🦬", capturedAt: Date(timeIntervalSince1970: 1), lastUsedAt: Date(timeIntervalSince1970: 2))
+        let old = LegacyEntry(
+            id: UUID(),
+            text: "e\u{301}\n🦬",
+            capturedAt: Date(timeIntervalSince1970: 1),
+            lastUsedAt: Date(timeIntervalSince1970: 2)
+        )
         let data = try PropertyListEncoder().encode(Legacy(version: 1, entries: [old]))
         let sealed = try AES.GCM.seal(data, using: TestKeyStore().key(createIfMissing: false)).combined!
         try sealed.write(to: file)

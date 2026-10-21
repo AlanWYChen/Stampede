@@ -10,15 +10,20 @@ public enum ClipboardRead: Equatable, Sendable {
 
 @MainActor public protocol ClipboardClient: AnyObject {
     var revision: Int { get }
+
     var canReadInBackground: Bool { get }
+
     func read() -> ClipboardRead
+
     func write(_ text: String) -> Bool
+
     func writeImage(_ image: ClipboardImage) -> Bool
+
     func clear() -> Int
 }
 
-public extension ClipboardClient {
-    func writeImage(_ image: ClipboardImage) -> Bool { false }
+extension ClipboardClient {
+    public func writeImage(_ image: ClipboardImage) -> Bool { false }
 }
 
 @MainActor public final class ClipboardMonitor {
@@ -62,8 +67,7 @@ public extension ClipboardClient {
         case .text(let text):
             processedRevision = before
             pendingRevision = nil
-            if text.isEmpty || text.utf8.count > History.maximumEntryBytes { onInactive?() }
-            else { onCapture?(text) }
+            if text.isEmpty || text.utf8.count > History.maximumEntryBytes { onInactive?() } else { onCapture?(text) }
         case .image(let candidate):
             processedRevision = before
             pendingRevision = nil
@@ -82,7 +86,10 @@ public extension ClipboardClient {
             onInactive?()
             attempts += 1
             nextAttempt = now.addingTimeInterval(pow(2, Double(attempts - 1)))
-            if attempts >= 4 { processedRevision = before; pendingRevision = nil }
+            if attempts >= 4 {
+                processedRevision = before
+                pendingRevision = nil
+            }
         }
     }
 
@@ -99,7 +106,10 @@ public extension ClipboardClient {
     }
 
     public func activateImage(_ image: ClipboardImage) -> Bool {
-        guard clipboard.writeImage(image) else { onInactive?(); return false }
+        guard clipboard.writeImage(image) else {
+            onInactive?()
+            return false
+        }
         processedRevision = clipboard.revision
         pendingRevision = nil
         return true
@@ -107,7 +117,10 @@ public extension ClipboardClient {
 
     /// Returns false without changing history. A failed system write may have cleared the clipboard.
     public func activate(_ text: String) -> Bool {
-        guard clipboard.write(text) else { onInactive?(); return false }
+        guard clipboard.write(text) else {
+            onInactive?()
+            return false
+        }
         processedRevision = clipboard.revision
         pendingRevision = nil
         return true
