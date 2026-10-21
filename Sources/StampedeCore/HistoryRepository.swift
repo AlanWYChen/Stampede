@@ -88,6 +88,10 @@ public struct HistoryKeyStore: HistoryKeyProviding {
     }
 }
 
+private struct ImageCleanupError: LocalizedError {
+    var errorDescription: String? { "History was saved, but some old encrypted image files could not be removed. Retry History Storage to finish cleanup." }
+}
+
 public actor HistoryRepository {
     private struct Snapshot: Codable {
         let version: Int
@@ -97,6 +101,7 @@ public actor HistoryRepository {
     private let keyStore: any HistoryKeyProviding
     private var latestGeneration: UInt64 = 0
     private var loaded = false
+    private var committedBlobs = Set<UUID>()
     private let maximumFileBytes = 24 * 1_048_576
 
     public init(fileURL: URL, keyStore: any HistoryKeyProviding = HistoryKeyStore()) {
@@ -118,14 +123,40 @@ public actor HistoryRepository {
         let plaintext: Data
         do { plaintext = try AES.GCM.open(AES.GCM.SealedBox(combined: data), using: key) }
         catch { throw HistoryStorageError.invalidFile }
+        struct Header: Decodable { let version: Int }
+        let version: Int
+        do { version = try PropertyListDecoder().decode(Header.self, from: plaintext).version }
+        catch { throw HistoryStorageError.invalidFile }
+        guard [1, 2].contains(version) else { throw HistoryStorageError.unsupportedVersion }
         let snapshot: Snapshot
         do { snapshot = try PropertyListDecoder().decode(Snapshot.self, from: plaintext) }
         catch { throw HistoryStorageError.invalidFile }
-        guard snapshot.version == 1 else { throw HistoryStorageError.unsupportedVersion }
+        guard [1, 2].contains(snapshot.version) else { throw HistoryStorageError.unsupportedVersion }
         let validated = History(entries: snapshot.entries)
         guard validated.entries == snapshot.entries else { throw HistoryStorageError.invalidEntries }
+        var entries = snapshot.entries
+        committedBlobs.removeAll()
+        for index in entries.indices {
+            guard var image = entries[index].image else { continue }
+            do {
+                let url = blobURL(image.blobID)
+                let size = try FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber
+                guard size?.intValue == image.byteCount + 28 else { throw HistoryStorageError.invalidFile }
+                let encrypted = try Data(contentsOf: url)
+                let bytes = try AES.GCM.open(AES.GCM.SealedBox(combined: encrypted), using: key, authenticating: image.authenticatedContext)
+                guard bytes.count == image.byteCount, Data(SHA256.hash(data: bytes)) == image.digest else { throw HistoryStorageError.invalidFile }
+                let prepared = try ImageProcessor.prepare(ImageCandidate(type: image.type, data: bytes))
+                guard prepared.width == image.width, prepared.height == image.height else { throw HistoryStorageError.invalidFile }
+                image.data = bytes; image.thumbnail = prepared.thumbnail
+                committedBlobs.insert(image.blobID)
+            } catch {
+                // A broken image does not hide healthy text or other images. Keep its descriptor for the disabled row.
+                image.data = nil; image.thumbnail = nil
+            }
+            entries[index].image = image
+        }
         loaded = true
-        return snapshot.entries
+        return entries
     }
 
     /// Actor serialization plus monotonic generations prevents late old saves from resurrecting cleared entries.
@@ -149,11 +180,51 @@ public actor HistoryRepository {
     }
 
     private func writeSnapshot(_ entries: [ClipboardEntry], key: SymmetricKey) throws {
+        try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true,
+                                               attributes: [.posixPermissions: 0o700])
+        let images = entries.compactMap(\.image)
+        for image in images where !committedBlobs.contains(image.blobID) {
+            guard let bytes = image.data else { continue }
+            guard Data(SHA256.hash(data: bytes)) == image.digest else { throw HistoryStorageError.invalidEntries }
+            if let available = try fileURL.deletingLastPathComponent().resourceValues(forKeys: [.volumeAvailableCapacityKey]).volumeAvailableCapacity,
+               available < bytes.count + 2 * 1_048_576 { throw CocoaError(.fileWriteOutOfSpace) }
+            let encrypted = try AES.GCM.seal(bytes, using: key, authenticating: image.authenticatedContext).combined!
+            try atomicWrite(encrypted, to: blobURL(image.blobID))
+            committedBlobs.insert(image.blobID)
+        }
         let encoder = PropertyListEncoder()
         encoder.outputFormat = .binary
-        let plaintext = try encoder.encode(Snapshot(version: 1, entries: entries))
+        let plaintext = try encoder.encode(Snapshot(version: 2, entries: entries))
         let encrypted = try AES.GCM.seal(plaintext, using: key).combined!
-        let directory = fileURL.deletingLastPathComponent()
+        try atomicWrite(encrypted, to: fileURL)
+        let retained = Set(images.map(\.blobID))
+        let directory = fileURL.deletingLastPathComponent().appendingPathComponent("images")
+        if FileManager.default.fileExists(atPath: directory.path) {
+            for url in try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) {
+                guard url.pathExtension == "enc", let id = UUID(uuidString: url.deletingPathExtension().lastPathComponent), !retained.contains(id) else { continue }
+                do { try FileManager.default.removeItem(at: url) }
+                catch { throw ImageCleanupError() }
+                committedBlobs.remove(id)
+            }
+        }
+        // Recover encrypted staging files left by a process interruption, including clear/reset.
+        for folder in [fileURL.deletingLastPathComponent(), directory] where FileManager.default.fileExists(atPath: folder.path) {
+            for url in try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil) {
+                let name = url.lastPathComponent
+                guard name.hasPrefix(".history-"), name.hasSuffix(".tmp"),
+                      UUID(uuidString: String(name.dropFirst(9).dropLast(4))) != nil else { continue }
+                do { try FileManager.default.removeItem(at: url) }
+                catch { throw ImageCleanupError() }
+            }
+        }
+    }
+
+    private func blobURL(_ id: UUID) -> URL {
+        fileURL.deletingLastPathComponent().appendingPathComponent("images").appendingPathComponent("\(id.uuidString).enc")
+    }
+
+    private func atomicWrite(_ encrypted: Data, to destination: URL) throws {
+        let directory = destination.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true,
                                                attributes: [.posixPermissions: 0o700])
         let temporary = directory.appendingPathComponent(".history-\(UUID().uuidString).tmp")
@@ -168,6 +239,6 @@ public actor HistoryRepository {
             try handle.synchronize()
             try handle.close()
         } catch { try? handle.close(); throw error }
-        guard rename(temporary.path, fileURL.path) == 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+        guard rename(temporary.path, destination.path) == 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
     }
 }

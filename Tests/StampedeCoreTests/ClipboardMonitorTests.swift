@@ -8,6 +8,12 @@ import XCTest
     var writeSucceeds = true
     var reads = 0
     var writes: [String] = []
+    var imageWrites = 0
+    func writeImage(_ image: ClipboardImage) -> Bool {
+        imageWrites += 1; revision += 1
+        result = .excluded
+        return writeSucceeds
+    }
     var onRead: (() -> Void)?
     func read() -> ClipboardRead { reads += 1; onRead?(); return result }
     func write(_ text: String) -> Bool {
@@ -21,6 +27,30 @@ import XCTest
 }
 
 final class ClipboardMonitorTests: XCTestCase {
+    func testImageObservationAndActivationSuppressOnlyOwnWrite() async throws {
+        let image = try ImageProcessor.prepare(ImageCandidate(type: "public.png", data: ImageSupportTests.fixture()))
+        await MainActor.run {
+            let client = FakeClipboard()
+            let monitor = ClipboardMonitor(clipboard: client)
+            var images = 0
+            monitor.onImage = { _, revision in images += 1; XCTAssertEqual(revision, client.revision) }
+            client.result = .image(ImageCandidate(type: image.type, data: image.data!))
+            monitor.poll()
+            XCTAssertEqual(images, 1)
+            XCTAssertTrue(monitor.activateImage(image))
+            monitor.poll()
+            XCTAssertEqual(images, 1)
+            client.revision += 1
+            client.result = .image(ImageCandidate(type: image.type, data: image.data!))
+            monitor.poll()
+            XCTAssertEqual(images, 2)
+            client.writeSucceeds = false
+            let processed = monitor.processedRevision
+            XCTAssertFalse(monitor.activateImage(image))
+            XCTAssertEqual(monitor.processedRevision, processed)
+        }
+    }
+
     func testClearClipboardSuppressesOnlyItsOwnRevisionAndKeepsNextCopy() async {
         await MainActor.run {
             let client = FakeClipboard()

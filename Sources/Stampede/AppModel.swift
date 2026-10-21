@@ -27,6 +27,9 @@ import StampedeCore
     private var loading = false
     private var timer: Timer?
     private var loadedOnce = false
+    private let imageProcessor = ImageProcessor()
+    private var captures = CaptureCoordinator()
+    private var imageTasks: [UUID: Task<Void, Never>] = [:]
     private let preview: Bool
 
     init(preview: Bool = false) {
@@ -47,14 +50,21 @@ import StampedeCore
         repository = HistoryRepository(fileURL: support.appendingPathComponent("com.alanwychen.rotarystamp/history.enc"))
         monitor.onCapture = { [weak self] text in
             guard let self else { return }
-            self.currentID = self.history.capture(text)
+            self.operationError = nil
+            self.currentID = self.history.capture(text, now: self.captures.observe())
             self.scheduleSave()
         }
+        monitor.onImage = { [weak self] candidate, revision in self?.captureImage(candidate, revision: revision) }
+        monitor.onImageRejected = { [weak self] message in self?.operationError = message }
         monitor.onInactive = { [weak self] in self?.currentID = nil }
         monitor.onAccessRequired = { [weak self] in self?.accessRequired = true }
         if preview {
             setupComplete = true
             history = History(entries: [ClipboardEntry(text: "Welcome to Stampede"), ClipboardEntry(text: "A previous clipboard item"), ClipboardEntry(text: "https://developer.apple.com")])
+            if let bytes = ClipboardSelfTest.sampleImageData(),
+               let image = try? ImageProcessor.prepare(ImageCandidate(type: "public.png", data: bytes, sourceApp: "Safari", sourceHost: "example.com")) {
+                history.capture(ClipboardEntry(image: image))
+            }
             ready = true
             storageStatus = "Preview — no clipboard or storage access"
             loginStatus = "Preview — login registration disabled"
@@ -64,6 +74,28 @@ import StampedeCore
         refreshClipboardAccess()
         if setupComplete { load() }
         else { storageStatus = "Enable history to get started" }
+    }
+
+    private func captureImage(_ candidate: ImageCandidate, revision: Int) {
+        guard let ticket = captures.reserve(bytes: candidate.data.count) else {
+            operationError = "Image processing is busy. Copy the image again after it finishes."
+            return
+        }
+        let taskID = UUID()
+        imageTasks[taskID] = Task {
+            defer { captures.finish(ticket); imageTasks.removeValue(forKey: taskID) }
+            do {
+                let image = try await imageProcessor.process(candidate)
+                guard captures.accepts(ticket, capacity: history.capacity), !paused else { return }
+                let id = history.capture(ClipboardEntry(image: image, capturedAt: ticket.time, lastUsedAt: ticket.time))
+                if clipboard.revision == revision { currentID = id }
+                operationError = nil
+                scheduleSave()
+            } catch {
+                guard captures.accepts(ticket, capacity: history.capacity), clipboard.revision == revision else { return }
+                operationError = error.localizedDescription
+            }
+        }
     }
 
     func completeSetup() {
@@ -83,6 +115,7 @@ import StampedeCore
             do {
                 let entries = try await repository.load(requireExisting: defaults.bool(forKey: "hasSavedHistory"), userInitiated: userInitiated)
                 history = History(entries: entries, capacity: history.capacity)
+                _ = captures.observe(now: entries.map(\.lastUsedAt).max() ?? Date())
                 ready = true
                 loadedOnce = true
                 loading = false
@@ -145,7 +178,7 @@ import StampedeCore
         let time = Date().formatted(date: .omitted, time: .standard)
         switch accessState {
         case .allowed:
-            accessFeedback = "Checked at \(time). Access is already allowed; no permission dialog is needed. " + (paused ? "Capture is paused. Turn on Capture new copies to resume." : "New text copies can be added to your history.")
+            accessFeedback = "Checked at \(time). Access is already allowed; no permission dialog is needed. " + (paused ? "Capture is paused. Turn on Capture new copies to resume." : "New text and image copies can be added to your history.")
         case .notDetermined:
             accessFeedback = "Checked at \(time). macOS has not recorded a permission choice yet. Copy some text in another app, then check again. A dialog appears only when macOS requires one."
         case .ask:
@@ -170,38 +203,53 @@ import StampedeCore
             operationError = "This entry is no longer in history. Reopen the menu."
             return
         }
-        guard !preview else { currentID = history.capture(entry.text); return }
+        guard !preview else { promote(entry); return }
         if !paused { monitor.poll() }
-        guard monitor.activate(entry.text) else {
+        guard entry.image?.data != nil || entry.image == nil else {
+            operationError = "This saved image is missing or unreadable. Other entries are still available."
+            return
+        }
+        guard entry.image.map({ monitor.activateImage($0) }) ?? monitor.activate(entry.text) else {
             operationError = "The clipboard could not be updated and may now be empty. Please try again."
             return
         }
         operationError = nil
-        currentID = history.capture(entry.text)
+        promote(entry)
         scheduleSave()
+    }
+
+    private func promote(_ entry: ClipboardEntry) {
+        let now = captures.observe()
+        currentID = history.capture(entry.image.map { ClipboardEntry(image: $0, capturedAt: entry.capturedAt, lastUsedAt: now) }
+            ?? ClipboardEntry(text: entry.text, capturedAt: entry.capturedAt, lastUsedAt: now))
     }
 
     func setCapacity(_ value: Int) {
         guard ready else { return }
+        captures.invalidate()
         history.setCapacity(value)
         if !history.entries.contains(where: { $0.id == currentID }) { currentID = nil }
         if !preview { defaults.set(history.capacity, forKey: "historyCapacity"); scheduleSave() }
     }
 
     func togglePause() {
+        captures.invalidate()
         paused.toggle()
         if !preview { defaults.set(paused, forKey: "capturePaused"); monitor.baseline() }
     }
 
     func clearClipboard() {
         guard ready else { return }
+        captures.invalidate()
         history.clear()
         currentID = nil
+        operationError = nil
         if !preview { monitor.clearClipboard(); scheduleSave(immediate: true) }
     }
 
     func resetHistory() {
         guard setupComplete, !preview, !loading else { return }
+        captures.invalidate()
         saveTask?.cancel()
         generation += 1
         let revision = generation
@@ -277,6 +325,8 @@ import StampedeCore
         timer?.invalidate()
         timer = nil
         guard ready, !preview else { return true }
+        // Finish copies already observed before the final snapshot is taken.
+        for task in Array(imageTasks.values) { await task.value }
         saveTask?.cancel()
         generation += 1
         do {

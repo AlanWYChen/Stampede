@@ -4,12 +4,13 @@
 
 **Your recent copies, one menu away.**
 
-Stampede is a native macOS menu bar app that remembers your last **10 or 20 text copies**, saves them encrypted across restarts, and lets you choose what to paste next.
+Stampede is a native macOS menu bar app that remembers your last **10 or 20 text and image copies**, saves them encrypted across restarts, and lets you choose what to paste next.
 
 [![macOS checks](https://github.com/AlanWYChen/Stampede/actions/workflows/ci.yml/badge.svg)](https://github.com/AlanWYChen/Stampede/actions/workflows/ci.yml)
 
 ## Features
 
+- **Photo copies:** recognize images by a small thumbnail and dimensions; select one to restore its full-resolution original for normal paste.
 - **Clipboard history:** select an older entry to move it to the top and make it the active clipboard.
 - **Normal paste:** use **⌘V** or your existing paste mapping. A new copy always becomes active; pasting does not consume history.
 - **Persistent storage:** AES-256-GCM encryption with a randomly generated key stored in macOS Keychain.
@@ -35,7 +36,7 @@ The script builds `Stampede.app`, installs it in `~/Applications`, and opens it.
 
 1. Choose **Enable History & Launch at Login** on the welcome screen.
 2. Click the clipboard icon in the menu bar to open your history. Stampede has no ordinary Dock window.
-3. Copy some text, select any saved entry, and paste as usual.
+3. Copy text or an image, select any saved entry, and paste as usual.
 
 If capture needs permission, open **Settings → Check Clipboard Access**. The result explains the current state. Use **Open System Settings…** to review clipboard/paste permissions when needed. Launch at login may also need approval in macOS Login Items settings.
 
@@ -67,19 +68,21 @@ Select `Alpha`: history becomes `Alpha → Charlie → Bravo`, and your next pas
 
 | Control | Behavior |
 | --- | --- |
-| **Select an entry** | Makes that text the active system clipboard. You paste it manually. |
+| **Select an entry** | Makes that text or full-resolution image the active system clipboard. You paste it manually. |
 | **Pause Capture** | Stops saving new copies. Normal copy/paste and Universal Clipboard keep working; existing entries remain selectable. |
 | **Clear Clipboard** | After confirmation, clears the current Mac clipboard and Stampede’s saved history. |
 | **Try Again** | Retries opening unreadable history or accessing its encryption key. |
 | **Reset** | Starts an empty saved history and recreates a missing key if needed. Leaves the current Mac clipboard unchanged. |
 
+Images appear as a thumbnail plus a label such as **Image · 1920 × 1080 · Safari · example.com**. The app name is a best-effort indication of the foreground app when the copy was observed, not verified provenance (especially for remote or pre-launch copies). The domain appears only if the clipboard item supplies an HTTP(S) URL; it may refer to an image host rather than the page you visited. Stampede does not inspect browser tabs, fetch websites, or generate image descriptions. Long source labels are shortened.
+
 After a restart, Stampede restores your history list **without overwriting the current clipboard**. Select a saved entry when you want to use it again. Pause state and history capacity also persist.
 
 ## Privacy and storage
 
-Stampede keeps history locally. It encrypts the entire saved snapshot using **CryptoKit AES-256-GCM**, with a fresh random nonce for each save. Its random 256-bit key is stored separately in Keychain, with iCloud Keychain synchronization disabled.
+Stampede keeps history locally. It encrypts the history manifest and separate image blobs using **CryptoKit AES-256-GCM**, with a fresh random nonce for each save. Its random 256-bit key is stored separately in Keychain, with iCloud Keychain synchronization disabled.
 
-- Clipboard text and previews are not logged.
+- Clipboard text, images, source labels, and previews are not logged.
 - Content marked concealed, transient, or automatically generated is excluded.
 - **Unmarked passwords and other sensitive text can still be captured.** Pause capture or clear the clipboard when needed.
 - Encryption protects the saved file; history remains readable in memory and in the app while running.
@@ -89,11 +92,13 @@ Stampede keeps history locally. It encrypts the entire saved snapshot using **Cr
 <details>
 <summary>Storage location and Keychain entry</summary>
 
-History file:
+History manifest (including text and image metadata):
 
 ```text
 ~/Library/Application Support/com.alanwychen.rotarystamp/history.enc
 ```
+
+Image originals are stored beside it in `images/<random-uuid>.enc`, individually encrypted with the same Keychain key and authenticated with their blob ID and format. Reordering history does not re-encrypt image bytes. Thumbnails are generated in memory. Clear/reset remove owned image blobs after committing empty history; deletion failures are reported through storage status and can be retried. Missing or damaged image blobs disable only their affected menu entries. Older text-only history upgrades on the next successful save; older app binaries cannot read the new format.
 
 - Service: `com.alanwychen.rotarystamp.history`
 - Account: `history-key-v1`
@@ -110,8 +115,8 @@ Devices must be nearby, signed in to the same Apple Account, and have Wi-Fi, Blu
 
 ## Current limitations
 
-- **Text only:** images, files, and multi-item copies are not saved. Their normal system paste behavior is unaffected.
-- **Bounded history:** 10 or 20 entries, with a maximum of 1 MiB of UTF-8 text per entry.
+- **Images:** single-frame PNG, TIFF, JPEG, and HEIC clipboard data are supported. PNG, then TIFF, then JPEG, then HEIC is preferred when multiple formats are offered; original bytes are preserved. Finder file copies, file promises, PDFs, animations, and multi-item copies are excluded. Their normal paste behavior is unaffected.
+- **Bounded history:** 10 or 20 mixed entries; 1 MiB of UTF-8 text per entry; 20 MiB, 16 megapixels, and 8,192 pixels per edge for an image. A 100 MiB total payload budget can evict older entries before the count limit is reached. Oversized images leave existing history intact.
 - **Polling:** very rapid copies between checks can be missed. Stampede cannot reconstruct copies made while it was closed or the Mac was asleep.
 - **Local builds:** ad-hoc signed by default and not sandboxed. No notarized installer or automatic updater is provided.
 
@@ -124,7 +129,7 @@ build/Stampede.app/Contents/MacOS/Stampede --self-test
 build/Stampede.app/Contents/MacOS/Stampede --keychain-self-test
 ```
 
-`--self-test` uses a private pasteboard without inspecting or changing your clipboard. `--keychain-self-test` creates and removes a disposable test key without touching the history key. Automated checks cover history ordering, limits, access checks, persistence, recovery, and clearing; CI also builds the native Xcode project.
+`--self-test` uses a private pasteboard without inspecting or changing your clipboard. `--keychain-self-test` creates and removes a disposable test key without touching the history key. Automated checks cover mixed history ordering, image validation, limits, access checks, encrypted image persistence, legacy migration, recovery, and clearing; CI also builds the native Xcode project.
 
 For a sample-data preview that does not access your clipboard, save history, or register login items:
 
@@ -132,7 +137,9 @@ For a sample-data preview that does not access your clipboard, save history, or 
 open -n -a "$PWD/build/Stampede.app" --args --preview
 ```
 
-Quit the preview before running the real app. Permission dialogs, automatic launch after reboot, and cross-device delivery still need testing in a real user session.
+Quit the preview before running the real app. Permission dialogs, automatic launch after reboot, and cross-device delivery still need testing in a real user session. Image support has synthetic PNG/TIFF/JPEG/HEIC private-pasteboard coverage; actual Safari/Chrome, Preview, Notes, Messages, image-editor, and iPad/iPhone compatibility and color-profile appearance still require manual verification.
+
+Image validation/downsampling and encrypted disk work run off the main actor. Validated encoded originals stay in memory (up to the 100 MiB retention budget), so selection does not wait for disk I/O or overwrite a newer copy after a delayed load. Queued image candidates have a separate combined 20 MiB limit; thumbnails have a 128-pixel longest edge. These are payload limits, not absolute peak RAM/disk guarantees: pasteboard providers may allocate data before its size can be checked, and decoders/encryption/atomic replacement require additional memory and disk space.
 
 | Location | Purpose |
 | --- | --- |

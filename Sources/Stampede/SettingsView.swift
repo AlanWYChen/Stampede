@@ -22,7 +22,7 @@ struct SettingsView: View {
                 Button("Open Login Items Settings") { SMAppService.openSystemSettingsLoginItems() }
             }
             Section("Clipboard access") {
-                Text("Clipboard access lets Stampede read text you copy in other apps and save it to history.")
+                Text("Clipboard access lets Stampede read text and images you copy in other apps and save it to history.")
                     .font(.caption)
                 Text(model.accessState.summary).font(.caption).bold()
                 HStack {
@@ -39,7 +39,7 @@ struct SettingsView: View {
                 }
             }
             Section("Privacy & iPad") {
-                Text("Text history is encrypted on this Mac and kept across restarts. Unmarked passwords may be captured. Pause capture or clear history when needed.")
+                Text("Text and image history is encrypted on this Mac and kept across restarts. Unmarked passwords may be captured. Pause capture or clear history when needed.")
                 Text("Selecting an item makes it the active clipboard for normal paste. Apple Universal Clipboard shares the active item with nearby devices using the same Apple Account, with Handoff, Bluetooth, and Wi-Fi enabled. Saved history stays on this Mac.")
                 Text("Restarting restores your list without replacing your Mac or iPad clipboard.")
             }.font(.caption)

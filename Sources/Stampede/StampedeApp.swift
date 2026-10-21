@@ -11,7 +11,7 @@ import Combine
         }
         if ProcessInfo.processInfo.arguments.contains("--self-test") {
             let success = ClipboardSelfTest.run()
-            print(success ? "PASS: native clipboard round trip, exclusions, activation, and external clear (private pasteboard)" : "FAIL: native clipboard integration")
+            print(success ? "PASS: native text/PNG/TIFF/JPEG/HEIC clipboard round trips, alpha, exclusions, activation, and clear (private pasteboard)" : "FAIL: native clipboard integration")
             exit(success ? 0 : 1)
         }
         let application = NSApplication.shared
@@ -78,11 +78,24 @@ import Combine
             add("Enable Clipboard History…", to: menu, action: #selector(welcome))
         } else {
             if model.paused { add("Capture paused", to: menu) }
-            if model.history.entries.isEmpty { add(model.ready ? "Copy some text to start your history" : "Saved history is not loaded", to: menu) }
+            if model.history.entries.isEmpty { add(model.ready ? "Copy text or an image to start your history" : "Saved history is not loaded", to: menu) }
             for entry in model.history.entries {
                 let item = add(entry.preview, to: menu, action: #selector(selectEntry(_:)), represented: entry.id)
                 item.state = entry.id == model.currentID ? .on : .off
-                item.toolTip = "Make this text the active clipboard, then paste as usual."
+                item.toolTip = "Make this copy the active clipboard, then paste as usual."
+                if let image = entry.image {
+                    if let thumbnail = image.thumbnail.flatMap(NSImage.init(data:)) {
+                        let scale = 32 / max(thumbnail.size.width, thumbnail.size.height)
+                        thumbnail.size = NSSize(width: thumbnail.size.width * scale, height: thumbnail.size.height * scale)
+                        item.image = thumbnail
+                    } else { item.image = NSImage(systemSymbolName: "photo", accessibilityDescription: "Saved image") }
+                    if image.data == nil {
+                        item.isEnabled = false
+                        item.title += " · Unavailable"
+                        item.toolTip = "This saved image is missing or unreadable. Clear history to remove unavailable entries."
+                    }
+                    item.setAccessibilityLabel(item.title)
+                }
             }
             menu.addItem(.separator())
             add(model.storageStatus, to: menu)
@@ -126,7 +139,7 @@ import Combine
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.messageText = "Welcome to Stampede"
-        alert.informativeText = "Keep your latest 10 or 20 text copies, encrypted on this Mac, even after a restart. Select an older copy from the menu bar, then paste normally on Mac or iPad through Universal Clipboard.\n\nEnabling history also enables launch at login. Unmarked passwords can be captured; you can pause or clear history at any time. macOS may require clipboard access approval."
+        alert.informativeText = "Keep your latest 10 or 20 text and image copies, encrypted on this Mac, even after a restart. Select an older copy from the menu bar, then paste normally on Mac or iPad through Universal Clipboard.\n\nEnabling history also enables launch at login. Unmarked passwords can be captured; you can pause or clear history at any time. macOS may require clipboard access approval."
         alert.addButton(withTitle: "Enable History & Launch at Login")
         alert.addButton(withTitle: "Not Now")
         if alert.runModal() == .alertFirstButtonReturn { model.completeSetup() }
