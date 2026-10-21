@@ -1,9 +1,20 @@
 import AppKit
 import Combine
+import ImageIO
 import SwiftUI
+
+#if canImport(StampedeCore)
+    import StampedeCore
+#endif
 
 @main struct StampedeApplication {
     @MainActor static func main() {
+        // Clipboard images are untrusted, so ImageIO may only decode the formats Stampede captures
+        // (plus the app's own icon).
+        if #available(macOS 14.2, *) {
+            let status = CGImageSourceSetAllowableTypes((ClipboardImage.supportedTypes + ["com.apple.icns"]) as CFArray)
+            if status != noErr { print("ImageIO decoder restriction error: \(status)") }
+        }
         if ProcessInfo.processInfo.arguments.contains("--keychain-self-test") {
             let success = ClipboardSelfTest.keychainRoundTrip()
             print(
