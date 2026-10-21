@@ -30,10 +30,30 @@ import Combine
     private var showingRecovery = false
     private var observer: AnyCancellable?
     private let preview = ProcessInfo.processInfo.arguments.contains("--preview")
+    private var instanceLock: Int32 = -1
+
+    /// Holds an advisory lock beside the saved history until exit, so two copies never share it. Unlike a running-app
+    /// lookup it cannot race, covers the bare SwiftPM binary, and ignores preview copies, which never take it.
+    private func lockInstance() -> Bool {
+        let directory = AppModel.storageDirectory
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+        let descriptor = open(directory.appendingPathComponent("instance.lock").path, O_RDWR | O_CREAT | O_CLOEXEC, 0o600)
+        if descriptor >= 0, flock(descriptor, LOCK_EX | LOCK_NB) == 0 { instanceLock = descriptor; return true }
+        let held = descriptor >= 0 && errno == EWOULDBLOCK
+        if descriptor >= 0 { close(descriptor) }
+        if held { return false }
+        // The lock file is unusable here, so fall back to the running-app lookup. It cannot tell a preview copy apart.
+        guard let identifier = Bundle.main.bundleIdentifier else { return true }
+        return !NSRunningApplication.runningApplications(withBundleIdentifier: identifier).contains(where: { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier })
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        if !preview, let identifier = Bundle.main.bundleIdentifier,
-           NSRunningApplication.runningApplications(withBundleIdentifier: identifier).contains(where: { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }) {
+        if !preview, !lockInstance() {
+            NSApp.activate(ignoringOtherApps: true)
+            let alert = NSAlert()
+            alert.messageText = "Stampede is already running"
+            alert.informativeText = "Another copy of Stampede is using your clipboard history. Use its icon in the menu bar, or quit it before opening this copy."
+            alert.runModal()
             NSApp.terminate(nil)
             return
         }

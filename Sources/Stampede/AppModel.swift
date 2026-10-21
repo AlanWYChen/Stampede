@@ -31,6 +31,8 @@ import StampedeCore
     private var captures = CaptureCoordinator()
     private var imageTasks: [UUID: Task<Void, Never>] = [:]
     private let preview: Bool
+    // The stable storage directory preserves history from existing installations.
+    static let storageDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("com.alanwychen.rotarystamp")
 
     init(preview: Bool = false) {
         self.preview = preview
@@ -45,9 +47,7 @@ import StampedeCore
         }
         clipboard = SystemClipboardClient()
         monitor = ClipboardMonitor(clipboard: clipboard)
-        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        // The stable storage directory preserves history from existing installations.
-        repository = HistoryRepository(fileURL: support.appendingPathComponent("com.alanwychen.rotarystamp/history.enc"))
+        repository = HistoryRepository(fileURL: AppModel.storageDirectory.appendingPathComponent("history.enc"))
         monitor.onCapture = { [weak self] text in
             guard let self else { return }
             self.operationError = nil
