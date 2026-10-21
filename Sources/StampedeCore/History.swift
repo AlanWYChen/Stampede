@@ -29,7 +29,9 @@ public struct ClipboardEntry: Codable, Identifiable, Equatable, Sendable {
         if let image { return image.label }
 
         let prefix = text.prefix(71)
-        let value = String(prefix).map { $0.isWhitespace || $0.isNewline || $0.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }) ? " " : String($0) }.joined()
+        // Joiners are format characters, but emoji sequences and Persian or Indic words need them.
+        let controls = CharacterSet.controlCharacters.subtracting(CharacterSet(charactersIn: "\u{200C}\u{200D}"))
+        let value = String(prefix).map { $0.isWhitespace || $0.isNewline || $0.unicodeScalars.contains(where: { controls.contains($0) }) ? " " : String($0) }.joined()
         return String(value.prefix(70)) + (prefix.count > 70 ? "…" : "")
     }
 }

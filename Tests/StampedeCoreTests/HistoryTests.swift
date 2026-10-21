@@ -36,6 +36,14 @@ final class HistoryTests: XCTestCase {
         XCTAssertFalse(history.entries[0].preview.contains("\n"))
     }
 
+    func testPreviewKeepsJoinedEmojiAndWordsButReplacesControls() {
+        // Each joiner belongs to the preceding character, so dropping it drops a visible emoji or letter.
+        for text in ["Ship it 👩\u{200D}💻 👨\u{200D}👩\u{200D}👧", "می\u{200C}خواهم", "ශ්\u{200D}රී ලංකා"] {
+            XCTAssertEqual(ClipboardEntry(text: text).preview, text)
+        }
+        XCTAssertEqual(ClipboardEntry(text: "a\u{202E}b\u{200F}c\u{7}d").preview, "a b c d")
+    }
+
     func testLoadSanitizesDuplicateIDsAndInvalidEntries() {
         let id = UUID()
         let history = History(entries: [ClipboardEntry(id: id, text: "a"), ClipboardEntry(id: id, text: "b"), ClipboardEntry(text: "")])
