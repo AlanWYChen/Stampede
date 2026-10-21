@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import StampedeCore
 
 @MainActor final class FakeClipboard: ClipboardClient {
@@ -9,21 +10,39 @@ import XCTest
     var reads = 0
     var writes: [String] = []
     var imageWrites = 0
+
     func writeImage(_ image: ClipboardImage) -> Bool {
-        imageWrites += 1; revision += 1
+        imageWrites += 1
+        revision += 1
         result = .excluded
         return writeSucceeds
     }
+
     var onRead: (() -> Void)?
-    func read() -> ClipboardRead { reads += 1; onRead?(); return result }
+
+    func read() -> ClipboardRead {
+        reads += 1
+        onRead?()
+        return result
+    }
+
     func write(_ text: String) -> Bool {
         writes.append(text)
         revision += 1
         result = writeSucceeds ? .text(text) : .excluded
         return writeSucceeds
     }
-    func clear() -> Int { revision += 1; result = .excluded; return revision }
-    func copy(_ text: String) { revision += 1; result = .text(text) }
+
+    func clear() -> Int {
+        revision += 1
+        result = .excluded
+        return revision
+    }
+
+    func copy(_ text: String) {
+        revision += 1
+        result = .text(text)
+    }
 }
 
 final class ClipboardMonitorTests: XCTestCase {
@@ -33,7 +52,10 @@ final class ClipboardMonitorTests: XCTestCase {
             let client = FakeClipboard()
             let monitor = ClipboardMonitor(clipboard: client)
             var images = 0
-            monitor.onImage = { _, revision in images += 1; XCTAssertEqual(revision, client.revision) }
+            monitor.onImage = { _, revision in
+                images += 1
+                XCTAssertEqual(revision, client.revision)
+            }
             client.result = .image(ImageCandidate(type: image.type, data: image.data!))
             monitor.poll()
             XCTAssertEqual(images, 1)
