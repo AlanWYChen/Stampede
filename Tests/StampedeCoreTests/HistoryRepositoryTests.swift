@@ -142,4 +142,13 @@ final class HistoryRepositoryTests: XCTestCase {
         do { _ = try await repository.load(); XCTFail("Future schema should fail") }
         catch HistoryStorageError.unsupportedVersion {} catch { XCTFail("Unexpected failure: \(error)") }
     }
+
+    func testSaveExcludesStorageDirectoryFromBackup() async throws {
+        let file = try temporaryFile()
+        let repository = HistoryRepository(fileURL: file, keyStore: TestKeyStore())
+        _ = try await repository.load()
+        try await repository.save([ClipboardEntry(text: "not for backups")], generation: 1)
+        let directory = file.deletingLastPathComponent()
+        XCTAssertEqual(try directory.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup, true)
+    }
 }
