@@ -1,15 +1,42 @@
-import AppKit
 import Foundation
+import ImageIO
+import UniformTypeIdentifiers
 
 @main struct IconGenerator {
-    @MainActor static func main() throws {
-        let output = URL(fileURLWithPath: CommandLine.arguments[1])
+    static func main() throws {
+        let input = URL(fileURLWithPath: CommandLine.arguments[1])
+        let output = URL(fileURLWithPath: CommandLine.arguments[2])
+        guard let source = CGImageSourceCreateWithURL(input as CFURL, nil) else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
         try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
         for size in [16, 32, 128, 256, 512] {
             for scale in [1, 2] {
-                let bitmap = StampIcon.appIcon(pixels: size * scale)
-                let png = bitmap.representation(using: .png, properties: [:])!
-                try png.write(to: output.appendingPathComponent("icon_\(size)x\(size)\(scale == 2 ? "@2x" : "").png"))
+                // Resize the supplied artwork without redrawing, cropping, or removing its background.
+                guard
+                    let image = CGImageSourceCreateThumbnailAtIndex(
+                        source,
+                        0,
+                        [
+                            kCGImageSourceCreateThumbnailFromImageAlways: true,
+                            kCGImageSourceThumbnailMaxPixelSize: size * scale,
+                            kCGImageSourceCreateThumbnailWithTransform: true,
+                        ] as CFDictionary
+                    )
+                else { throw CocoaError(.fileReadCorruptFile) }
+                let url = output.appendingPathComponent("icon_\(size)x\(size)\(scale == 2 ? "@2x" : "").png")
+                guard
+                    let destination = CGImageDestinationCreateWithURL(
+                        url as CFURL,
+                        UTType.png.identifier as CFString,
+                        1,
+                        nil
+                    )
+                else {
+                    throw CocoaError(.fileWriteUnknown)
+                }
+                CGImageDestinationAddImage(destination, image, nil)
+                guard CGImageDestinationFinalize(destination) else { throw CocoaError(.fileWriteUnknown) }
             }
         }
     }
