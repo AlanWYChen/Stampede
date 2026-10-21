@@ -215,11 +215,14 @@ def main():
             "GENERATE_INFOPLIST_FILE": "NO",
             "CODE_SIGN_STYLE": "Manual",
             "CODE_SIGN_IDENTITY": "-",
+            "ENABLE_HARDENED_RUNTIME": "YES",
             "COMBINE_HIDPI_IMAGES": "YES",
             "SWIFT_OPTIMIZATION_LEVEL": "-Onone" if configuration == "Debug" else "-O",
             "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "DEBUG" if configuration == "Debug" else "",
             "LD_RUNPATH_SEARCH_PATHS": "$(inherited) @executable_path/../Frameworks",
         }
+        if configuration == "Release":
+            settings["CODE_SIGN_INJECT_BASE_ENTITLEMENTS"] = "NO"
         configurations.append(project.add(
             configuration, "XCBuildConfiguration", buildSettings=settings, name=configuration
         ))

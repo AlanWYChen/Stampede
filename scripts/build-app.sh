@@ -10,6 +10,6 @@ cp "$binary_directory/Stampede" "$app/Contents/MacOS/Stampede"
 cp Resources/Stampede.icns "$app/Contents/Resources/Stampede.icns"
 cp Resources/Info.plist "$app/Contents/Info.plist"
 # Local build only. Use a stable developer identity for persistent Keychain trust and distribution.
-codesign --force --sign "${CODE_SIGN_IDENTITY:--}" "$app"
+codesign --force --options runtime --sign "${CODE_SIGN_IDENTITY:--}" "$app"
 plutil -lint "$app/Contents/Info.plist"
 printf 'Built %s/build/Stampede.app\n' "$PWD"
