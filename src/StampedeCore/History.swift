@@ -16,22 +16,36 @@ public struct ClipboardEntry: Codable, Identifiable, Equatable, Sendable {
     }
 
     public init(id: UUID = UUID(), image: ClipboardImage, capturedAt: Date = Date(), lastUsedAt: Date = Date()) {
-        self.id = id; self.text = ""; self.image = image
-        self.capturedAt = capturedAt; self.lastUsedAt = lastUsedAt
+        self.id = id
+        self.text = ""
+        self.image = image
+        self.capturedAt = capturedAt
+        self.lastUsedAt = lastUsedAt
     }
+
     public var byteCount: Int { image?.byteCount ?? text.utf8.count }
-    public var valid: Bool { image.map { text.isEmpty && $0.isValid } ?? (!text.isEmpty && byteCount <= History.maximumEntryBytes) }
+
+    public var valid: Bool {
+        image.map { text.isEmpty && $0.isValid } ?? (!text.isEmpty && byteCount <= History.maximumEntryBytes)
+    }
+
     public func sameContent(as other: ClipboardEntry) -> Bool {
-        if let a = image, let b = other.image { return a.type == b.type && a.digest == b.digest && (a.data == nil || b.data == nil || a.data == b.data) }
+        if let a = image, let b = other.image {
+            return a.type == b.type && a.digest == b.digest && (a.data == nil || b.data == nil || a.data == b.data)
+        }
         return image == nil && other.image == nil && text.utf8.elementsEqual(other.text.utf8)
     }
+
     public var preview: String {
         if let image { return image.label }
 
         let prefix = text.prefix(71)
         // Joiners are format characters, but emoji sequences and Persian or Indic words need them.
         let controls = CharacterSet.controlCharacters.subtracting(CharacterSet(charactersIn: "\u{200C}\u{200D}"))
-        let value = String(prefix).map { $0.isWhitespace || $0.isNewline || $0.unicodeScalars.contains(where: { controls.contains($0) }) ? " " : String($0) }.joined()
+        let value = String(prefix).map {
+            $0.isWhitespace || $0.isNewline
+                || $0.unicodeScalars.contains(where: { controls.contains($0) }) ? " " : String($0)
+        }.joined()
         return String(value.prefix(70)) + (prefix.count > 70 ? "…" : "")
     }
 }
@@ -49,8 +63,9 @@ public struct History: Sendable {
         for entry in entries where self.entries.count < self.capacity {
             let size = entry.byteCount
             guard entry.valid,
-                  bytes + size <= Self.maximumTotalBytes,
-                  !self.entries.contains(where: { $0.id == entry.id || $0.sameContent(as: entry) }) else { continue }
+                bytes + size <= Self.maximumTotalBytes,
+                !self.entries.contains(where: { $0.id == entry.id || $0.sameContent(as: entry) })
+            else { continue }
             self.entries.append(entry)
             bytes += size
         }
@@ -67,8 +82,16 @@ public struct History: Sendable {
         if let index = entries.firstIndex(where: { $0.sameContent(as: candidate) }) {
             if entries[index].lastUsedAt > candidate.lastUsedAt { return entries[index].id }
             let old = entries.remove(at: index)
-            entry = candidate.image.map { ClipboardEntry(id: old.id, image: $0, capturedAt: old.capturedAt, lastUsedAt: candidate.lastUsedAt) }
-                ?? ClipboardEntry(id: old.id, text: candidate.text, capturedAt: old.capturedAt, lastUsedAt: candidate.lastUsedAt)
+            entry =
+                candidate.image.map {
+                    ClipboardEntry(id: old.id, image: $0, capturedAt: old.capturedAt, lastUsedAt: candidate.lastUsedAt)
+                }
+                ?? ClipboardEntry(
+                    id: old.id,
+                    text: candidate.text,
+                    capturedAt: old.capturedAt,
+                    lastUsedAt: candidate.lastUsedAt
+                )
         }
         let index = entries.firstIndex(where: { $0.lastUsedAt <= entry.lastUsedAt }) ?? entries.endIndex
         entries.insert(entry, at: index)
