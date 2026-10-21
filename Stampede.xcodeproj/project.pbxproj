@@ -1,39 +1,454 @@
 // !$*UTF8*$!
-{ archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
-A329B36A89144AA50FF18E36 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Stampede/AppModel.swift"; sourceTree = SOURCE_ROOT; };
-2B59190022A830CAF2C30A43 = { isa = PBXBuildFile; fileRef = A329B36A89144AA50FF18E36; };
-46CAEAEF3C0D43358358D739 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Stampede/ClipboardSelfTest.swift"; sourceTree = SOURCE_ROOT; };
-8ED29EC12BD35400EBED31D4 = { isa = PBXBuildFile; fileRef = 46CAEAEF3C0D43358358D739; };
-ED674133FD8EB995BE16EB83 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Stampede/SettingsView.swift"; sourceTree = SOURCE_ROOT; };
-39797EA9968030184CD61160 = { isa = PBXBuildFile; fileRef = ED674133FD8EB995BE16EB83; };
-DB0A13863E28840912FA3B5B = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Stampede/StampIcon.swift"; sourceTree = SOURCE_ROOT; };
-C6709F890181D5CED5ECA370 = { isa = PBXBuildFile; fileRef = DB0A13863E28840912FA3B5B; };
-8886CD83265BE4CDADD8E6B9 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Stampede/StampedeApp.swift"; sourceTree = SOURCE_ROOT; };
-4AC0F03E61A8964F86AA93D0 = { isa = PBXBuildFile; fileRef = 8886CD83265BE4CDADD8E6B9; };
-8FB8634B09DC01CD8D4F1729 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Stampede/SystemClipboardClient.swift"; sourceTree = SOURCE_ROOT; };
-FC94F9F79F0D4E22474EE8B6 = { isa = PBXBuildFile; fileRef = 8FB8634B09DC01CD8D4F1729; };
-E75AD082B41761BD32E94FBA = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/StampedeCore/CaptureCoordinator.swift"; sourceTree = SOURCE_ROOT; };
-FA5AF0CE06C8B661B086517F = { isa = PBXBuildFile; fileRef = E75AD082B41761BD32E94FBA; };
-666E89E1BC856C4755BA6003 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/StampedeCore/ClipboardAccessState.swift"; sourceTree = SOURCE_ROOT; };
-3CF114A076567951D65A505D = { isa = PBXBuildFile; fileRef = 666E89E1BC856C4755BA6003; };
-721A92F3D51487929AEADB62 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/StampedeCore/ClipboardImage.swift"; sourceTree = SOURCE_ROOT; };
-5E294F8C0BDED58478BAC6DA = { isa = PBXBuildFile; fileRef = 721A92F3D51487929AEADB62; };
-C5195ECFD78E58124DB48D24 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/StampedeCore/ClipboardMonitor.swift"; sourceTree = SOURCE_ROOT; };
-5A1CBAB5C9A2479219053ACC = { isa = PBXBuildFile; fileRef = C5195ECFD78E58124DB48D24; };
-4CCC5C680C54AF0B29A6E18D = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/StampedeCore/History.swift"; sourceTree = SOURCE_ROOT; };
-4ED1323E87EE414D7750D658 = { isa = PBXBuildFile; fileRef = 4CCC5C680C54AF0B29A6E18D; };
-F063F06F64396CC4D6BF6AD5 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/StampedeCore/HistoryRepository.swift"; sourceTree = SOURCE_ROOT; };
-E14ABD73954471D619F15747 = { isa = PBXBuildFile; fileRef = F063F06F64396CC4D6BF6AD5; };
-F8995BA5891B07E328C60D6B = { isa = PBXFileReference; lastKnownFileType = image.icns; path = Resources/Stampede.icns; sourceTree = SOURCE_ROOT; };
-74C2431FE30C4A47C8443B80 = { isa = PBXBuildFile; fileRef = F8995BA5891B07E328C60D6B; };
-0189424A5A60FED329FA868E = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (74C2431FE30C4A47C8443B80); runOnlyForDeploymentPostprocessing = 0; };
-38A007151ABE87CC01A5B6E9 = { isa = PBXFileReference; explicitFileType = wrapper.application; path = Stampede.app; sourceTree = BUILT_PRODUCTS_DIR; };
-FBDC4F23F93125BBEEAE800C = { isa = PBXGroup; children = (38A007151ABE87CC01A5B6E9); name = Products; sourceTree = "<group>"; };
-B28B7AF69320201D1CF206EB = { isa = PBXGroup; children = (A329B36A89144AA50FF18E36, 46CAEAEF3C0D43358358D739, ED674133FD8EB995BE16EB83, DB0A13863E28840912FA3B5B, 8886CD83265BE4CDADD8E6B9, 8FB8634B09DC01CD8D4F1729, E75AD082B41761BD32E94FBA, 666E89E1BC856C4755BA6003, 721A92F3D51487929AEADB62, C5195ECFD78E58124DB48D24, 4CCC5C680C54AF0B29A6E18D, F063F06F64396CC4D6BF6AD5, F8995BA5891B07E328C60D6B, FBDC4F23F93125BBEEAE800C); sourceTree = "<group>"; };
-BCE16DD0260827ECF338C787 = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (2B59190022A830CAF2C30A43, 8ED29EC12BD35400EBED31D4, 39797EA9968030184CD61160, C6709F890181D5CED5ECA370, 4AC0F03E61A8964F86AA93D0, FC94F9F79F0D4E22474EE8B6, FA5AF0CE06C8B661B086517F, 3CF114A076567951D65A505D, 5E294F8C0BDED58478BAC6DA, 5A1CBAB5C9A2479219053ACC, 4ED1323E87EE414D7750D658, E14ABD73954471D619F15747); runOnlyForDeploymentPostprocessing = 0; };
-BD604D99E75E45D38BC7AC8F = { isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = "NO"; PRODUCT_NAME = "Stampede"; PRODUCT_BUNDLE_IDENTIFIER = "com.alanwychen.rotarystamp"; SWIFT_VERSION = "6.0"; MACOSX_DEPLOYMENT_TARGET = "14.0"; SDKROOT = "macosx"; INFOPLIST_FILE = "Resources/Info.plist"; GENERATE_INFOPLIST_FILE = "NO"; CODE_SIGN_STYLE = "Manual"; CODE_SIGN_IDENTITY = "-"; ENABLE_HARDENED_RUNTIME = "YES"; COMBINE_HIDPI_IMAGES = "YES"; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG"; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; }; name = Debug; };
-D41F56CEA1AC933D25C57AEB = { isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = "NO"; PRODUCT_NAME = "Stampede"; PRODUCT_BUNDLE_IDENTIFIER = "com.alanwychen.rotarystamp"; SWIFT_VERSION = "6.0"; MACOSX_DEPLOYMENT_TARGET = "14.0"; SDKROOT = "macosx"; INFOPLIST_FILE = "Resources/Info.plist"; GENERATE_INFOPLIST_FILE = "NO"; CODE_SIGN_STYLE = "Manual"; CODE_SIGN_IDENTITY = "-"; ENABLE_HARDENED_RUNTIME = "YES"; COMBINE_HIDPI_IMAGES = "YES"; SWIFT_OPTIMIZATION_LEVEL = "-O"; SWIFT_ACTIVE_COMPILATION_CONDITIONS = ""; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; CODE_SIGN_INJECT_BASE_ENTITLEMENTS = "NO"; }; name = Release; };
-E30856D4D988D9571DE7D610 = { isa = XCConfigurationList; buildConfigurations = (BD604D99E75E45D38BC7AC8F, D41F56CEA1AC933D25C57AEB); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-0E8A3AD980EC179856012B7E = { isa = PBXNativeTarget; buildConfigurationList = E30856D4D988D9571DE7D610; buildPhases = (BCE16DD0260827ECF338C787, 0189424A5A60FED329FA868E); buildRules = (); dependencies = (); name = Stampede; productName = Stampede; productReference = 38A007151ABE87CC01A5B6E9; productType = "com.apple.product-type.application"; };
-98F54143AB4E86B28C3AFEE0 = { isa = PBXProject; attributes = { LastUpgradeCheck = 1600; }; buildConfigurationList = E30856D4D988D9571DE7D610; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base); mainGroup = B28B7AF69320201D1CF206EB; productRefGroup = FBDC4F23F93125BBEEAE800C; projectDirPath = ""; projectRoot = ""; targets = (0E8A3AD980EC179856012B7E); };
-}; rootObject = 98F54143AB4E86B28C3AFEE0; }
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		BFC2889458BF8F37C6E315DB = {
+			isa = PBXBuildFile;
+			fileRef = B6AB1153D3DEDE84846814C6;
+		};
+		D2F1A98729DF89C32D2CD79F = {
+			isa = PBXBuildFile;
+			fileRef = D17DCA4C2E4F034A3E3481AC;
+		};
+		8785990ED00BDB90583F8EC0 = {
+			isa = PBXBuildFile;
+			fileRef = 69C17EB9C0D2DA96FB2FA0AF;
+		};
+		030B1524ED61DA77F427BDFB = {
+			isa = PBXBuildFile;
+			fileRef = 858E0E88D32E1F02EDCBE926;
+		};
+		88896EFDA1A67F9C323572C3 = {
+			isa = PBXBuildFile;
+			fileRef = 958C662C183A9152D4F522EB;
+		};
+		8796FE99891B2506B0A17DF8 = {
+			isa = PBXBuildFile;
+			fileRef = 9228CA8AAF4FE16DADE020A2;
+		};
+		51D041E91E848B683DED038D = {
+			isa = PBXBuildFile;
+			fileRef = E865CD4A3D02D9E5022C9FF7;
+		};
+		68D7594C931C31C5A898A6EB = {
+			isa = PBXBuildFile;
+			fileRef = 26D82CC96071A57E0F6FC5F1;
+		};
+		7AF48722BACD488CE2B9FDF3 = {
+			isa = PBXBuildFile;
+			fileRef = 0534E1CC43AFB9895D6F2090;
+		};
+		BD223F53E7EA37423AD36540 = {
+			isa = PBXBuildFile;
+			fileRef = 3C10C0D2E39B5EE80625ECAA;
+		};
+		95F3B05EAD4B152171F54983 = {
+			isa = PBXBuildFile;
+			fileRef = 6895B99091E6C6AD59D9E8CC;
+		};
+		C84357B169F683A4DEA5453C = {
+			isa = PBXBuildFile;
+			fileRef = 69EA6A188F745C04910D860A;
+		};
+		81D4D93540264ED175F9919C = {
+			isa = PBXBuildFile;
+			fileRef = A406A28DDE085C8F8AC9E341;
+		};
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		B6AB1153D3DEDE84846814C6 = {
+			isa = PBXFileReference;
+			lastKnownFileType = "sourcecode.swift";
+			path = "AppModel.swift";
+			sourceTree = "<group>";
+		};
+		D17DCA4C2E4F034A3E3481AC = {
+			isa = PBXFileReference;
+			lastKnownFileType = "sourcecode.swift";
+			path = "ClipboardSelfTest.swift";
+			sourceTree = "<group>";
+		};
+		69C17EB9C0D2DA96FB2FA0AF = {
+			isa = PBXFileReference;
+			lastKnownFileType = "sourcecode.swift";
+			path = "SettingsView.swift";
+			sourceTree = "<group>";
+		};
+		858E0E88D32E1F02EDCBE926 = {
+			isa = PBXFileReference;
+			lastKnownFileType = "sourcecode.swift";
+			path = "StampIcon.swift";
+			sourceTree = "<group>";
+		};
+		958C662C183A9152D4F522EB = {
+			isa = PBXFileReference;
+			lastKnownFileType = "sourcecode.swift";
+			path = "StampedeApp.swift";
+			sourceTree = "<group>";
+		};
+		9228CA8AAF4FE16DADE020A2 = {
+			isa = PBXFileReference;
+			lastKnownFileType = "sourcecode.swift";
+			path = "SystemClipboardClient.swift";
+			sourceTree = "<group>";
+		};
+		E865CD4A3D02D9E5022C9FF7 = {
+			isa = PBXFileReference;
+			lastKnownFileType = "sourcecode.swift";
+			path = "CaptureCoordinator.swift";
+			sourceTree = "<group>";
+		};
+		26D82CC96071A57E0F6FC5F1 = {
+			isa = PBXFileReference;
+			lastKnownFileType = "sourcecode.swift";
+			path = "ClipboardAccessState.swift";
+			sourceTree = "<group>";
+		};
+		0534E1CC43AFB9895D6F2090 = {
+			isa = PBXFileReference;
+			lastKnownFileType = "sourcecode.swift";
+			path = "ClipboardImage.swift";
+			sourceTree = "<group>";
+		};
+		3C10C0D2E39B5EE80625ECAA = {
+			isa = PBXFileReference;
+			lastKnownFileType = "sourcecode.swift";
+			path = "ClipboardMonitor.swift";
+			sourceTree = "<group>";
+		};
+		6895B99091E6C6AD59D9E8CC = {
+			isa = PBXFileReference;
+			lastKnownFileType = "sourcecode.swift";
+			path = "History.swift";
+			sourceTree = "<group>";
+		};
+		69EA6A188F745C04910D860A = {
+			isa = PBXFileReference;
+			lastKnownFileType = "sourcecode.swift";
+			path = "HistoryRepository.swift";
+			sourceTree = "<group>";
+		};
+		876915722956E9734C1B6EE9 = {
+			isa = PBXFileReference;
+			lastKnownFileType = "sourcecode.swift";
+			path = "ClipboardMonitorTests.swift";
+			sourceTree = "<group>";
+		};
+		6C6E9330887946552A7A61E5 = {
+			isa = PBXFileReference;
+			lastKnownFileType = "sourcecode.swift";
+			path = "HistoryRepositoryTests.swift";
+			sourceTree = "<group>";
+		};
+		6976C0FC66A7DFE6F3EDD114 = {
+			isa = PBXFileReference;
+			lastKnownFileType = "sourcecode.swift";
+			path = "HistoryTests.swift";
+			sourceTree = "<group>";
+		};
+		E220960FCFC5BCB2DB572DC0 = {
+			isa = PBXFileReference;
+			lastKnownFileType = "sourcecode.swift";
+			path = "ImageSupportTests.swift";
+			sourceTree = "<group>";
+		};
+		D9C6393D6C2EE0244C1E3BAF = {
+			isa = PBXFileReference;
+			lastKnownFileType = "text.plist.xml";
+			path = "Info.plist";
+			sourceTree = "<group>";
+		};
+		A406A28DDE085C8F8AC9E341 = {
+			isa = PBXFileReference;
+			lastKnownFileType = "image.icns";
+			path = "Stampede.icns";
+			sourceTree = "<group>";
+		};
+		071FCCB890CEFFDD60FAFF76 = {
+			isa = PBXFileReference;
+			lastKnownFileType = "text.script.sh";
+			path = "build-app.sh";
+			sourceTree = "<group>";
+		};
+		06A2ADB0F57401FB66CCF700 = {
+			isa = PBXFileReference;
+			lastKnownFileType = "text.script.sh";
+			path = "generate-icon.sh";
+			sourceTree = "<group>";
+		};
+		1C6D0E300F0D9EDFEFAC40C8 = {
+			isa = PBXFileReference;
+			lastKnownFileType = "sourcecode.swift";
+			path = "generate-icon.swift";
+			sourceTree = "<group>";
+		};
+		E7CE52B7A264C5EBD5A6234D = {
+			isa = PBXFileReference;
+			lastKnownFileType = "text.script.python";
+			path = "generate-xcode-project.py";
+			sourceTree = "<group>";
+		};
+		7748B8AA211FC9384DBC6FFF = {
+			isa = PBXFileReference;
+			lastKnownFileType = "text.script.sh";
+			path = "install-local.sh";
+			sourceTree = "<group>";
+		};
+		BCFA14070C8F570C520EF850 = {
+			isa = PBXFileReference;
+			lastKnownFileType = "sourcecode.swift";
+			path = "Package.swift";
+			sourceTree = "<group>";
+		};
+		AA4ACA445B3FBAF47CDE31AC = {
+			isa = PBXFileReference;
+			lastKnownFileType = "net.daringfireball.markdown";
+			path = "README.md";
+			sourceTree = "<group>";
+		};
+		38A007151ABE87CC01A5B6E9 = {
+			isa = PBXFileReference;
+			explicitFileType = "wrapper.application";
+			path = "Stampede.app";
+			sourceTree = "BUILT_PRODUCTS_DIR";
+		};
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		22A9263BF5F96BE06886184E = {
+			isa = PBXGroup;
+			children = (
+				B6AB1153D3DEDE84846814C6,
+				D17DCA4C2E4F034A3E3481AC,
+				69C17EB9C0D2DA96FB2FA0AF,
+				858E0E88D32E1F02EDCBE926,
+				958C662C183A9152D4F522EB,
+				9228CA8AAF4FE16DADE020A2,
+			);
+			path = "Stampede";
+			sourceTree = "<group>";
+		};
+		136685CD14FB5F8151C70F17 = {
+			isa = PBXGroup;
+			children = (
+				E865CD4A3D02D9E5022C9FF7,
+				26D82CC96071A57E0F6FC5F1,
+				0534E1CC43AFB9895D6F2090,
+				3C10C0D2E39B5EE80625ECAA,
+				6895B99091E6C6AD59D9E8CC,
+				69EA6A188F745C04910D860A,
+			);
+			path = "StampedeCore";
+			sourceTree = "<group>";
+		};
+		6E561478C8B2EF0A22345336 = {
+			isa = PBXGroup;
+			children = (
+				22A9263BF5F96BE06886184E,
+				136685CD14FB5F8151C70F17,
+			);
+			path = "src";
+			sourceTree = "<group>";
+		};
+		5ABF473A27F90232C7152B1A = {
+			isa = PBXGroup;
+			children = (
+				876915722956E9734C1B6EE9,
+				6C6E9330887946552A7A61E5,
+				6976C0FC66A7DFE6F3EDD114,
+				E220960FCFC5BCB2DB572DC0,
+			);
+			path = "StampedeCoreTests";
+			sourceTree = "<group>";
+		};
+		156052F04525D0F710673CF0 = {
+			isa = PBXGroup;
+			children = (
+				5ABF473A27F90232C7152B1A,
+			);
+			path = "Tests";
+			sourceTree = "<group>";
+		};
+		A024F06580C79B7582C3806A = {
+			isa = PBXGroup;
+			children = (
+				D9C6393D6C2EE0244C1E3BAF,
+				A406A28DDE085C8F8AC9E341,
+			);
+			path = "Resources";
+			sourceTree = "<group>";
+		};
+		B293F2A4508E5EA7D2629486 = {
+			isa = PBXGroup;
+			children = (
+				071FCCB890CEFFDD60FAFF76,
+				06A2ADB0F57401FB66CCF700,
+				1C6D0E300F0D9EDFEFAC40C8,
+				E7CE52B7A264C5EBD5A6234D,
+				7748B8AA211FC9384DBC6FFF,
+			);
+			path = "scripts";
+			sourceTree = "<group>";
+		};
+		FBDC4F23F93125BBEEAE800C = {
+			isa = PBXGroup;
+			children = (
+				38A007151ABE87CC01A5B6E9,
+			);
+			name = "Products";
+			sourceTree = "<group>";
+		};
+		B28B7AF69320201D1CF206EB = {
+			isa = PBXGroup;
+			children = (
+				6E561478C8B2EF0A22345336,
+				156052F04525D0F710673CF0,
+				A024F06580C79B7582C3806A,
+				B293F2A4508E5EA7D2629486,
+				BCFA14070C8F570C520EF850,
+				AA4ACA445B3FBAF47CDE31AC,
+				FBDC4F23F93125BBEEAE800C,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0E8A3AD980EC179856012B7E = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E30856D4D988D9571DE7D610;
+			buildPhases = (
+				BCE16DD0260827ECF338C787,
+				0189424A5A60FED329FA868E,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = "Stampede";
+			productName = "Stampede";
+			productReference = 38A007151ABE87CC01A5B6E9;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		98F54143AB4E86B28C3AFEE0 = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = E30856D4D988D9571DE7D610;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = "en";
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				"en",
+				"Base",
+			);
+			mainGroup = B28B7AF69320201D1CF206EB;
+			productRefGroup = FBDC4F23F93125BBEEAE800C;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				0E8A3AD980EC179856012B7E,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		0189424A5A60FED329FA868E = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				81D4D93540264ED175F9919C,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		BCE16DD0260827ECF338C787 = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BFC2889458BF8F37C6E315DB,
+				D2F1A98729DF89C32D2CD79F,
+				8785990ED00BDB90583F8EC0,
+				030B1524ED61DA77F427BDFB,
+				88896EFDA1A67F9C323572C3,
+				8796FE99891B2506B0A17DF8,
+				51D041E91E848B683DED038D,
+				68D7594C931C31C5A898A6EB,
+				7AF48722BACD488CE2B9FDF3,
+				BD223F53E7EA37423AD36540,
+				95F3B05EAD4B152171F54983,
+				C84357B169F683A4DEA5453C,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		BD604D99E75E45D38BC7AC8F = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = "NO";
+				PRODUCT_NAME = "Stampede";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.alanwychen.rotarystamp";
+				SWIFT_VERSION = "6.0";
+				MACOSX_DEPLOYMENT_TARGET = "14.0";
+				SDKROOT = "macosx";
+				INFOPLIST_FILE = "Resources/Info.plist";
+				GENERATE_INFOPLIST_FILE = "NO";
+				CODE_SIGN_STYLE = "Manual";
+				CODE_SIGN_IDENTITY = "-";
+				ENABLE_HARDENED_RUNTIME = "YES";
+				COMBINE_HIDPI_IMAGES = "YES";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+			};
+			name = "Debug";
+		};
+		D41F56CEA1AC933D25C57AEB = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = "NO";
+				PRODUCT_NAME = "Stampede";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.alanwychen.rotarystamp";
+				SWIFT_VERSION = "6.0";
+				MACOSX_DEPLOYMENT_TARGET = "14.0";
+				SDKROOT = "macosx";
+				INFOPLIST_FILE = "Resources/Info.plist";
+				GENERATE_INFOPLIST_FILE = "NO";
+				CODE_SIGN_STYLE = "Manual";
+				CODE_SIGN_IDENTITY = "-";
+				ENABLE_HARDENED_RUNTIME = "YES";
+				COMBINE_HIDPI_IMAGES = "YES";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = "NO";
+			};
+			name = "Release";
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		E30856D4D988D9571DE7D610 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BD604D99E75E45D38BC7AC8F,
+				D41F56CEA1AC933D25C57AEB,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Release";
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 98F54143AB4E86B28C3AFEE0;
+}

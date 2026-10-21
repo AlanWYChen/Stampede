@@ -115,7 +115,7 @@ Devices must be nearby, signed in to the same Apple Account, and have Wi-Fi, Blu
 
 ## Current limitations
 
-- **Images:** single-frame PNG, TIFF, JPEG, and HEIC clipboard data are supported. PNG, then TIFF, then JPEG, then HEIC is preferred when multiple formats are offered; original bytes are preserved. Finder file copies, file promises, PDFs, animations, and multi-item copies are excluded. Their normal paste behavior is unaffected.
+- **Images:** single-frame PNG, TIFF, JPEG, and HEIC clipboard data are supported. PNG, then TIFF, then JPEG, then HEIC is preferred when multiple formats are offered; original bytes are preserved. File-reference-only copies (including Finder copies), file promises, PDFs, animations, and multi-item copies are excluded. When an app such as WeChat supplies both image bytes and a file reference, Stampede saves the supplied image without opening the referenced file. Their normal paste behavior is unaffected.
 - **Bounded history:** 10 or 20 mixed entries; 1 MiB of UTF-8 text per entry; 20 MiB, 16 megapixels, and 8,192 pixels per edge for an image. A 100 MiB total payload budget can evict older entries before the count limit is reached. Oversized images leave existing history intact.
 - **Polling:** very rapid copies between checks can be missed. Stampede cannot reconstruct copies made while it was closed or the Mac was asleep.
 - **Local builds:** ad-hoc signed by default and not sandboxed. No notarized installer or automatic updater is provided.
@@ -143,12 +143,20 @@ Image validation/downsampling and encrypted disk work run off the main actor. Va
 
 | Location | Purpose |
 | --- | --- |
-| `Sources/Stampede/` | Menu bar app, Settings, and system clipboard adapter |
-| `Sources/StampedeCore/` | History model, monitoring, and encrypted storage |
+| `src/Stampede/` | Menu bar app, Settings, and system clipboard adapter |
+| `src/StampedeCore/` | History model, monitoring, and encrypted storage |
 | `Tests/StampedeCoreTests/` | Automated core tests |
 | `scripts/` | Build, install, icon generation, and Xcode project generation |
 
-After adding or moving Swift source files, run `python3 scripts/generate-xcode-project.py` to update the checked-in Xcode project. After changing `Sources/Stampede/StampIcon.swift`, run `./scripts/generate-icon.sh` to regenerate the bundled icon and README image. Keep generated build output under the ignored `.build/` and `build/` directories.
+After adding or moving Swift source files, run `python3 scripts/generate-xcode-project.py` to update the checked-in Xcode project. After changing `src/Stampede/StampIcon.swift`, run `./scripts/generate-icon.sh` to regenerate the bundled icon and README image. Keep generated build output under the ignored `.build/` and `build/` directories.
+
+The Xcode navigator mirrors the source, test, resource, and script folders. Run core tests with `swift test`; the Xcode scheme builds and runs the app.
+
+Swift formatting uses four-space indentation and a 120-column target, configured in `.swift-format`. Format source files, tests, and the package manifest with the Xcode toolchain formatter:
+
+```sh
+xcrun swift-format format --in-place --recursive src Tests Package.swift scripts/generate-icon.swift
+```
 
 ## Contributing
 
