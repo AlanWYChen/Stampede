@@ -1,8 +1,9 @@
 import AppKit
 import Combine
 import ServiceManagement
+
 #if canImport(StampedeCore)
-import StampedeCore
+    import StampedeCore
 #endif
 
 @MainActor final class AppModel: ObservableObject {
@@ -47,7 +48,9 @@ import StampedeCore
         monitor = ClipboardMonitor(clipboard: clipboard)
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         // The stable storage directory preserves history from existing installations.
-        repository = HistoryRepository(fileURL: support.appendingPathComponent("com.alanwychen.rotarystamp/history.enc"))
+        repository = HistoryRepository(
+            fileURL: support.appendingPathComponent("com.alanwychen.rotarystamp/history.enc")
+        )
         monitor.onCapture = { [weak self] text in
             guard let self else { return }
             self.operationError = nil
@@ -60,9 +63,15 @@ import StampedeCore
         monitor.onAccessRequired = { [weak self] in self?.accessRequired = true }
         if preview {
             setupComplete = true
-            history = History(entries: [ClipboardEntry(text: "Welcome to Stampede"), ClipboardEntry(text: "A previous clipboard item"), ClipboardEntry(text: "https://developer.apple.com")])
+            history = History(entries: [
+                ClipboardEntry(text: "Welcome to Stampede"), ClipboardEntry(text: "A previous clipboard item"),
+                ClipboardEntry(text: "https://developer.apple.com"),
+            ])
             if let bytes = ClipboardSelfTest.sampleImageData(),
-               let image = try? ImageProcessor.prepare(ImageCandidate(type: "public.png", data: bytes, sourceApp: "Safari", sourceHost: "example.com")) {
+                let image = try? ImageProcessor.prepare(
+                    ImageCandidate(type: "public.png", data: bytes, sourceApp: "Safari", sourceHost: "example.com")
+                )
+            {
                 history.capture(ClipboardEntry(image: image))
             }
             ready = true
@@ -72,8 +81,7 @@ import StampedeCore
         }
         refreshLoginStatus()
         refreshClipboardAccess()
-        if setupComplete { load() }
-        else { storageStatus = "Enable history to get started" }
+        if setupComplete { load() } else { storageStatus = "Enable history to get started" }
     }
 
     private func captureImage(_ candidate: ImageCandidate, revision: Int) {
@@ -83,7 +91,10 @@ import StampedeCore
         }
         let taskID = UUID()
         imageTasks[taskID] = Task {
-            defer { captures.finish(ticket); imageTasks.removeValue(forKey: taskID) }
+            defer {
+                captures.finish(ticket)
+                imageTasks.removeValue(forKey: taskID)
+            }
             do {
                 let image = try await imageProcessor.process(candidate)
                 guard captures.accepts(ticket, capacity: history.capacity), !paused else { return }
@@ -92,7 +103,9 @@ import StampedeCore
                 operationError = nil
                 scheduleSave()
             } catch {
-                guard captures.accepts(ticket, capacity: history.capacity), clipboard.revision == revision else { return }
+                guard captures.accepts(ticket, capacity: history.capacity), clipboard.revision == revision else {
+                    return
+                }
                 operationError = error.localizedDescription
             }
         }
@@ -113,7 +126,10 @@ import StampedeCore
         storageStatus = "Loading saved history…"
         Task {
             do {
-                let entries = try await repository.load(requireExisting: defaults.bool(forKey: "hasSavedHistory"), userInitiated: userInitiated)
+                let entries = try await repository.load(
+                    requireExisting: defaults.bool(forKey: "hasSavedHistory"),
+                    userInitiated: userInitiated
+                )
                 history = History(entries: entries, capacity: history.capacity)
                 _ = captures.observe(now: entries.map(\.lastUsedAt).max() ?? Date())
                 ready = true
@@ -123,7 +139,9 @@ import StampedeCore
                 if !paused {
                     monitor.poll(userInitiated: userInitiated)
                     refreshClipboardAccess()
-                } else { monitor.baseline() }
+                } else {
+                    monitor.baseline()
+                }
                 // Persist capacity trimming, including a setting changed before this launch.
                 scheduleSave()
                 startTimer()
@@ -151,7 +169,9 @@ import StampedeCore
         if paused {
             // Watching revisions does not read content, and keeps the checkmark honest while paused.
             if monitor.processedRevision != clipboard.revision { monitor.baseline() }
-        } else { monitor.poll() }
+        } else {
+            monitor.poll()
+        }
     }
 
     func refreshClipboardAccess() {
@@ -178,22 +198,32 @@ import StampedeCore
         let time = Date().formatted(date: .omitted, time: .standard)
         switch accessState {
         case .allowed:
-            accessFeedback = "Checked at \(time). Access is already allowed; no permission dialog is needed. " + (paused ? "Capture is paused. Turn on Capture new copies to resume." : "New text and image copies can be added to your history.")
+            accessFeedback =
+                "Checked at \(time). Access is already allowed; no permission dialog is needed. "
+                + (paused
+                    ? "Capture is paused. Turn on Capture new copies to resume."
+                    : "New text and image copies can be added to your history.")
         case .notDetermined:
-            accessFeedback = "Checked at \(time). macOS has not recorded a permission choice yet. Copy some text in another app, then check again. A dialog appears only when macOS requires one."
+            accessFeedback =
+                "Checked at \(time). macOS has not recorded a permission choice yet. Copy some text in another app, then check again. A dialog appears only when macOS requires one."
         case .ask:
-            accessFeedback = "Checked at \(time). macOS is set to ask for access. Choose Always Allow for Stampede in its clipboard privacy settings to enable continuous capture."
+            accessFeedback =
+                "Checked at \(time). macOS is set to ask for access. Choose Always Allow for Stampede in its clipboard privacy settings to enable continuous capture."
         case .denied:
-            accessFeedback = "Checked at \(time). macOS is blocking clipboard reads. Open System Settings and change Stampede’s clipboard access to Allow or Always Allow."
+            accessFeedback =
+                "Checked at \(time). macOS is blocking clipboard reads. Open System Settings and change Stampede’s clipboard access to Allow or Always Allow."
         case .unknown:
-            accessFeedback = "Checked at \(time). Clipboard access could not be determined. Review Stampede’s clipboard permission in System Settings."
+            accessFeedback =
+                "Checked at \(time). Clipboard access could not be determined. Review Stampede’s clipboard permission in System Settings."
         }
     }
 
     func openSystemSettings() {
         guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.systempreferences"),
-              NSWorkspace.shared.open(url) else {
-            accessFeedback = "System Settings could not be opened. Open it from the Apple menu and search for clipboard or paste permissions."
+            NSWorkspace.shared.open(url)
+        else {
+            accessFeedback =
+                "System Settings could not be opened. Open it from the Apple menu and search for clipboard or paste permissions."
             return
         }
     }
@@ -203,7 +233,10 @@ import StampedeCore
             operationError = "This entry is no longer in history. Reopen the menu."
             return
         }
-        guard !preview else { promote(entry); return }
+        guard !preview else {
+            promote(entry)
+            return
+        }
         if !paused { monitor.poll() }
         guard entry.image?.data != nil || entry.image == nil else {
             operationError = "This saved image is missing or unreadable. Other entries are still available."
@@ -220,8 +253,10 @@ import StampedeCore
 
     private func promote(_ entry: ClipboardEntry) {
         let now = captures.observe()
-        currentID = history.capture(entry.image.map { ClipboardEntry(image: $0, capturedAt: entry.capturedAt, lastUsedAt: now) }
-            ?? ClipboardEntry(text: entry.text, capturedAt: entry.capturedAt, lastUsedAt: now))
+        currentID = history.capture(
+            entry.image.map { ClipboardEntry(image: $0, capturedAt: entry.capturedAt, lastUsedAt: now) }
+                ?? ClipboardEntry(text: entry.text, capturedAt: entry.capturedAt, lastUsedAt: now)
+        )
     }
 
     func setCapacity(_ value: Int) {
@@ -229,13 +264,19 @@ import StampedeCore
         captures.invalidate()
         history.setCapacity(value)
         if !history.entries.contains(where: { $0.id == currentID }) { currentID = nil }
-        if !preview { defaults.set(history.capacity, forKey: "historyCapacity"); scheduleSave() }
+        if !preview {
+            defaults.set(history.capacity, forKey: "historyCapacity")
+            scheduleSave()
+        }
     }
 
     func togglePause() {
         captures.invalidate()
         paused.toggle()
-        if !preview { defaults.set(paused, forKey: "capturePaused"); monitor.baseline() }
+        if !preview {
+            defaults.set(paused, forKey: "capturePaused")
+            monitor.baseline()
+        }
     }
 
     func clearClipboard() {
@@ -245,7 +286,10 @@ import StampedeCore
         currentID = nil
         operationError = nil
         // Clear is explicit and confirmed, so its save may ask to unlock the Keychain.
-        if !preview { monitor.clearClipboard(); scheduleSave(immediate: true, userInitiated: true) }
+        if !preview {
+            monitor.clearClipboard()
+            scheduleSave(immediate: true, userInitiated: true)
+        }
     }
 
     func resetHistory() {
@@ -284,9 +328,14 @@ import StampedeCore
     func retry() {
         guard setupComplete else { return }
         operationError = nil
-        if !loadedOnce { load(userInitiated: true) }
-        else if ready { scheduleSave(immediate: true, userInitiated: true) }
-        else { loadedOnce = false; load(userInitiated: true) }
+        if !loadedOnce {
+            load(userInitiated: true)
+        } else if ready {
+            scheduleSave(immediate: true, userInitiated: true)
+        } else {
+            loadedOnce = false
+            load(userInitiated: true)
+        }
     }
 
     private func scheduleSave(immediate: Bool = false, userInitiated: Bool = false) {
@@ -298,13 +347,16 @@ import StampedeCore
         saveTask?.cancel()
         saveTask = Task {
             if !immediate {
-                do { try await Task.sleep(for: .milliseconds(250)) }
-                catch { return }
+                do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
             }
             for attempt in 0..<4 {
                 guard !Task.isCancelled, generation == revision else { return }
                 do {
-                    try await repository.save(entries, generation: revision, userInitiated: userInitiated && attempt == 0)
+                    try await repository.save(
+                        entries,
+                        generation: revision,
+                        userInitiated: userInitiated && attempt == 0
+                    )
                     if generation == revision {
                         defaults.set(true, forKey: "hasSavedHistory")
                         storageStatus = "History saved locally · encrypted"
@@ -316,8 +368,7 @@ import StampedeCore
                     storageStatus = "History changes are not saved: \(error.localizedDescription)"
                     if attempt == 3, error is HistoryStorageError { onRecoveryNeeded?(error.localizedDescription) }
                     if attempt < 3 {
-                        do { try await Task.sleep(for: .seconds(1 << attempt)) }
-                        catch { return }
+                        do { try await Task.sleep(for: .seconds(1 << attempt)) } catch { return }
                     }
                 }
             }
@@ -365,11 +416,11 @@ import StampedeCore
     }
 
     var loginEnabled: Bool { !preview && SMAppService.mainApp.status == .enabled }
+
     func setLoginEnabled(_ enabled: Bool) {
         guard !preview else { return }
         do {
-            if enabled { try SMAppService.mainApp.register() }
-            else { try SMAppService.mainApp.unregister() }
+            if enabled { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
             refreshLoginStatus()
         } catch {
             refreshLoginStatus()

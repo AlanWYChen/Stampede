@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import StampedeCore
 
 final class HistoryTests: XCTestCase {
@@ -38,7 +39,9 @@ final class HistoryTests: XCTestCase {
 
     func testLoadSanitizesDuplicateIDsAndInvalidEntries() {
         let id = UUID()
-        let history = History(entries: [ClipboardEntry(id: id, text: "a"), ClipboardEntry(id: id, text: "b"), ClipboardEntry(text: "")])
+        let history = History(entries: [
+            ClipboardEntry(id: id, text: "a"), ClipboardEntry(id: id, text: "b"), ClipboardEntry(text: ""),
+        ])
         XCTAssertEqual(history.entries.map(\.text), ["a"])
     }
 }
