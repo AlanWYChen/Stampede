@@ -152,7 +152,7 @@ After adding or moving Swift source files, run `python3 scripts/generate-xcode-p
 
 ## Contributing
 
-[Bug reports](https://github.com/AlanWYChen/Stampede/issues/new) and focused pull requests are welcome. Include your macOS version, steps to reproduce, and expected behavior. Use sample text rather than private clipboard contents in reports.
+[Bug reports](https://github.com/AlanWYChen/Stampede/issues/new) and focused pull requests are welcome. Include your macOS version, steps to reproduce, and expected behavior. Use sample text rather than private clipboard contents in reports. Report security vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 
 For code changes, run `swift test` and `./scripts/build-app.sh`, and describe how you verified the change. Add regression coverage for changes to capture, ordering, storage, or recovery.
 
