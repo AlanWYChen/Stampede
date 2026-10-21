@@ -48,7 +48,7 @@ import UniformTypeIdentifiers
         where item.types.contains(type) {
             guard let data = item.data(forType: type) else { return .unavailable }
             guard data.count <= ClipboardImage.maximumBytes else {
-                return .rejectedImage(ImageProcessingError.tooLarge.localizedDescription)
+                continue
             }
             // A URL is optional context supplied by the copying app, never inferred from browser tabs.
             let url = item.string(forType: .URL).flatMap(URL.init(string:))
@@ -61,6 +61,10 @@ import UniformTypeIdentifiers
                     sourceHost: host.map { String($0.prefix(200)) }
                 )
             )
+        }
+        // Reached with a supported image type present only when every one offered is over the byte limit.
+        guard !item.types.contains(where: { ClipboardImage.supportedTypes.contains($0.rawValue) }) else {
+            return .rejectedImage(ImageProcessingError.tooLarge.localizedDescription)
         }
         guard
             !item.types.contains(where: {
