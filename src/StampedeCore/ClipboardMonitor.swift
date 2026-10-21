@@ -32,6 +32,10 @@ extension ClipboardClient {
     private var pendingRevision: Int?
     private var attempts = 0
     private var nextAttempt = Date.distantPast
+    /// A writer's clearContents, setString, and concealed-marker calls share one revision, so timer polls wait this
+    /// long after first seeing it. Shorter than the app's 0.5 s timer minus its 0.15 s tolerance, so the next tick
+    /// reads it.
+    static let settleDelay: TimeInterval = 0.25
     public var onImage: ((ImageCandidate, Int) -> Void)?
     public var onImageRejected: ((String) -> Void)?
     public var onCapture: ((String) -> Void)?
@@ -47,7 +51,9 @@ extension ClipboardClient {
         onInactive?()
     }
 
-    public func poll(userInitiated: Bool = false, now: Date = Date()) {
+    /// `foreground` polls (menu open, entry selection) skip only the settle delay; `userInitiated` also skips the
+    /// background-access check.
+    public func poll(userInitiated: Bool = false, foreground: Bool = false, now: Date = Date()) {
         guard userInitiated || clipboard.canReadInBackground else {
             onAccessRequired?()
             onInactive?()
@@ -58,9 +64,9 @@ extension ClipboardClient {
         if before != pendingRevision {
             pendingRevision = before
             attempts = 0
-            nextAttempt = .distantPast
+            nextAttempt = now.addingTimeInterval(Self.settleDelay)
         }
-        guard now >= nextAttempt else { return }
+        guard now >= nextAttempt || ((userInitiated || foreground) && attempts == 0) else { return }
         let result = clipboard.read()
         guard clipboard.revision == before else { return }
         switch result {

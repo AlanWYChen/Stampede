@@ -45,6 +45,14 @@ import XCTest
     }
 }
 
+@MainActor extension ClipboardMonitor {
+    /// A background poll that first sees a revision, then the next one after the settle delay.
+    func pollSettled(now: Date = Date()) {
+        poll(now: now)
+        poll(now: now.addingTimeInterval(ClipboardMonitor.settleDelay))
+    }
+}
+
 final class ClipboardMonitorTests: XCTestCase {
     func testImageObservationAndActivationSuppressOnlyOwnWrite() async throws {
         let image = try ImageProcessor.prepare(ImageCandidate(type: "public.png", data: ImageSupportTests.fixture()))
@@ -57,14 +65,14 @@ final class ClipboardMonitorTests: XCTestCase {
                 XCTAssertEqual(revision, client.revision)
             }
             client.result = .image(ImageCandidate(type: image.type, data: image.data!))
-            monitor.poll()
+            monitor.pollSettled()
             XCTAssertEqual(images, 1)
             XCTAssertTrue(monitor.activateImage(image))
-            monitor.poll()
+            monitor.pollSettled()
             XCTAssertEqual(images, 1)
             client.revision += 1
             client.result = .image(ImageCandidate(type: image.type, data: image.data!))
-            monitor.poll()
+            monitor.pollSettled()
             XCTAssertEqual(images, 2)
             client.writeSucceeds = false
             let processed = monitor.processedRevision
@@ -82,10 +90,10 @@ final class ClipboardMonitorTests: XCTestCase {
             monitor.onCapture = { captures.append($0) }
             monitor.clearClipboard()
             XCTAssertEqual(client.result, .excluded)
-            monitor.poll()
+            monitor.pollSettled()
             XCTAssertTrue(captures.isEmpty)
             client.copy("next copy")
-            monitor.poll()
+            monitor.pollSettled()
             XCTAssertEqual(captures, ["next copy"])
         }
     }
@@ -114,7 +122,7 @@ final class ClipboardMonitorTests: XCTestCase {
             let client = FakeClipboard()
             client.result = .unavailable
             let monitor = ClipboardMonitor(clipboard: client)
-            monitor.poll(now: Date())
+            monitor.pollSettled()
             let reads = client.reads
             monitor.probeAccess()
             XCTAssertEqual(client.reads, reads + 1)
@@ -136,11 +144,11 @@ final class ClipboardMonitorTests: XCTestCase {
             var captures: [String] = []
             monitor.onCapture = { captures.append($0) }
             client.copy("a")
-            monitor.poll()
+            monitor.pollSettled()
             XCTAssertTrue(monitor.activate("old"))
-            monitor.poll()
+            monitor.pollSettled()
             client.copy("new")
-            monitor.poll()
+            monitor.pollSettled()
             XCTAssertEqual(captures, ["a", "new"])
         }
     }
@@ -153,16 +161,86 @@ final class ClipboardMonitorTests: XCTestCase {
             monitor.onCapture = { captures.append($0) }
             client.copy("stale")
             client.onRead = { client.revision += 1 }
-            monitor.poll()
+            monitor.pollSettled()
+            XCTAssertEqual(client.reads, 1)
             XCTAssertTrue(captures.isEmpty)
             client.onRead = nil
             client.result = .unavailable
             let now = Date()
-            monitor.poll(now: now)
+            monitor.pollSettled(now: now)
             client.result = .text("from iPad")
-            monitor.poll(now: now.addingTimeInterval(1.1))
+            monitor.poll(now: now.addingTimeInterval(ClipboardMonitor.settleDelay + 1.1))
             XCTAssertEqual(captures, ["from iPad"])
             XCTAssertTrue(client.writes.isEmpty)
+        }
+    }
+
+    func testFirstBackgroundPollOfRevisionWaitsForWriterToFinish() async {
+        await MainActor.run {
+            let client = FakeClipboard()
+            let monitor = ClipboardMonitor(clipboard: client)
+            var captures: [String] = []
+            monitor.onCapture = { captures.append($0) }
+            let now = Date()
+            client.copy("password")
+            monitor.poll(now: now)
+            XCTAssertEqual(client.reads, 0, "The writer may not have added its concealed marker yet")
+            client.result = .excluded
+            monitor.poll(now: now.addingTimeInterval(ClipboardMonitor.settleDelay / 2))
+            XCTAssertEqual(client.reads, 0)
+            monitor.poll(now: now.addingTimeInterval(ClipboardMonitor.settleDelay))
+            XCTAssertEqual(client.reads, 1)
+            XCTAssertTrue(captures.isEmpty, "The marker added under the same revision is honored")
+        }
+    }
+
+    func testUserInitiatedPollSkipsSettleDelayButNotUnavailableBackoff() async {
+        await MainActor.run {
+            let client = FakeClipboard()
+            let monitor = ClipboardMonitor(clipboard: client)
+            var captures: [String] = []
+            monitor.onCapture = { captures.append($0) }
+            let now = Date()
+            client.copy("a")
+            monitor.poll(userInitiated: true, now: now)
+            client.copy("b")
+            monitor.poll(now: now)
+            monitor.poll(userInitiated: true, now: now)
+            XCTAssertEqual(captures, ["a", "b"])
+            client.copy("c")
+            client.result = .unavailable
+            monitor.poll(userInitiated: true, now: now)
+            monitor.poll(userInitiated: true, now: now)
+            XCTAssertEqual(client.reads, 3)
+        }
+    }
+
+    func testForegroundPollSkipsSettleDelayButNotAccessCheckOrBackoff() async {
+        await MainActor.run {
+            let client = FakeClipboard()
+            let monitor = ClipboardMonitor(clipboard: client)
+            var captures: [String] = []
+            monitor.onCapture = { captures.append($0) }
+            let now = Date()
+            client.copy("a")
+            monitor.poll(now: now)
+            monitor.poll(foreground: true, now: now)
+            client.copy("b")
+            monitor.poll(foreground: true, now: now)
+            XCTAssertEqual(
+                captures,
+                ["a", "b"],
+                "Opening the menu or selecting an entry must not wait for the settle delay"
+            )
+            client.canReadInBackground = false
+            client.copy("c")
+            monitor.poll(foreground: true, now: now)
+            XCTAssertEqual(client.reads, 2, "Foreground polls still need background read access")
+            client.canReadInBackground = true
+            client.result = .unavailable
+            monitor.poll(foreground: true, now: now)
+            monitor.poll(foreground: true, now: now)
+            XCTAssertEqual(client.reads, 3)
         }
     }
 
@@ -172,14 +250,14 @@ final class ClipboardMonitorTests: XCTestCase {
             let monitor = ClipboardMonitor(clipboard: client)
             client.canReadInBackground = false
             client.copy("private")
-            monitor.poll()
+            monitor.pollSettled()
             XCTAssertEqual(client.reads, 0)
             client.canReadInBackground = true
             monitor.baseline()
-            monitor.poll()
+            monitor.pollSettled()
             XCTAssertEqual(client.reads, 0)
             client.copy("after pause")
-            monitor.poll()
+            monitor.pollSettled()
             XCTAssertEqual(client.reads, 1)
         }
     }
