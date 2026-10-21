@@ -240,6 +240,33 @@ final class HistoryRepositoryTests: XCTestCase {
         XCTAssertTrue(restored.isEmpty)
     }
 
+    func testEraseRemovesSavedFilesAndRejectsLateSave() async throws {
+        let file = try temporaryFile()
+        let folder = file.deletingLastPathComponent()
+        let repository = HistoryRepository(fileURL: file, keyStore: TestKeyStore())
+        _ = try await repository.load()
+        let image = try ImageProcessor.prepare(ImageCandidate(type: "public.png", data: ImageSupportTests.fixture()))
+        try await repository.save([ClipboardEntry(image: image), ClipboardEntry(text: "old")], generation: 1)
+        let blob = folder.appendingPathComponent("images/\(image.blobID.uuidString).enc")
+        let staging = folder.appendingPathComponent(".history-\(UUID().uuidString).tmp")
+        let unrelated = [
+            folder.appendingPathComponent("unrelated.txt"), folder.appendingPathComponent("images/unrelated.txt"),
+        ]
+        for url in [staging] + unrelated { try Data("leave alone".utf8).write(to: url) }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: blob.path))
+        try await repository.erase(generation: 2)
+        for url in [file, blob, staging] { XCTAssertFalse(FileManager.default.fileExists(atPath: url.path)) }
+        for url in unrelated { XCTAssertTrue(FileManager.default.fileExists(atPath: url.path)) }
+        try await repository.save([ClipboardEntry(text: "late old save")], generation: 1)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+        let restored = try await HistoryRepository(fileURL: file, keyStore: TestKeyStore()).load()
+        XCTAssertTrue(restored.isEmpty)
+        do {
+            try await HistoryRepository(fileURL: file, keyStore: TestKeyStore()).erase(generation: 3)
+            XCTFail("Erase requires a loaded history")
+        } catch HistoryStorageError.invalidFile {} catch { XCTFail("Unexpected: \(error)") }
+    }
+
     func testTamperedOrWrongKeyDoesNotOverwriteSavedFile() async throws {
         let file = try temporaryFile()
         let repository = HistoryRepository(fileURL: file, keyStore: TestKeyStore())

@@ -329,4 +329,29 @@ public actor HistoryRepository {
             throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
         }
     }
+
+    /// Commits an empty history without the key by deleting the snapshot, its image blobs, and staging files.
+    /// Like `save`, it requires a successful load and ignores generations older than the last commit.
+    public func erase(generation: UInt64) throws {
+        guard loaded else { throw HistoryStorageError.invalidFile }
+        guard generation >= latestGeneration else { return }
+        committedBlobs.removeAll()
+        let folder = fileURL.deletingLastPathComponent()
+        let images = folder.appendingPathComponent("images")
+        if FileManager.default.fileExists(atPath: fileURL.path) { try FileManager.default.removeItem(at: fileURL) }
+        for (directory, blobs) in [(folder, false), (images, true)]
+        where FileManager.default.fileExists(atPath: directory.path) {
+            for url in try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) {
+                let name = url.lastPathComponent
+                let blob =
+                    blobs && url.pathExtension == "enc"
+                    && UUID(uuidString: url.deletingPathExtension().lastPathComponent) != nil
+                let staging =
+                    name.hasPrefix(".history-") && name.hasSuffix(".tmp")
+                    && UUID(uuidString: String(name.dropFirst(9).dropLast(4))) != nil
+                if blob || staging { try FileManager.default.removeItem(at: url) }
+            }
+        }
+        latestGeneration = generation
+    }
 }

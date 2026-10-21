@@ -192,6 +192,7 @@ import SwiftUI
             model.retry()
         } else if response == .alertSecondButtonReturn {
             model.resetHistory()
+            rebuildMenu()
         }
     }
 
@@ -203,8 +204,14 @@ import SwiftUI
             "This clears the current Mac clipboard and permanently removes all clipboard history saved by Stampede. It does not erase items already pasted or stored on your other devices."
         alert.addButton(withTitle: "Clear Clipboard").hasDestructiveAction = true
         alert.addButton(withTitle: "Cancel")
-        if alert.runModal() == .alertFirstButtonReturn { model.clearClipboard() }
+        if alert.runModal() == .alertFirstButtonReturn {
+            model.clearClipboard()
+            rebuildMenu()
+        }
     }
+
+    /// Drop cleared titles and thumbnails now rather than when the menu next opens.
+    private func rebuildMenu() { if let menu = statusItem?.menu { rebuild(menu) } }
 
     @objc private func showSettings() {
         if settingsWindow == nil {
