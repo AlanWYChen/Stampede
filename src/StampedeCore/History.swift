@@ -38,6 +38,12 @@ public struct ClipboardEntry: Codable, Identifiable, Equatable, Sendable {
 
     public var preview: String {
         if let image { return image.label }
+        // A combining-mark flood is one Character, so bound scalars before counting Characters.
+        let scalars = self.text.unicodeScalars
+        let text =
+            String(String.UnicodeScalarView(scalars.prefix(300))).map {
+                $0.unicodeScalars.count > 16 ? " " : String($0)
+            }.joined() + (scalars.dropFirst(300).isEmpty ? "" : "…")
 
         let prefix = text.prefix(71)
         let value = String(prefix).map {

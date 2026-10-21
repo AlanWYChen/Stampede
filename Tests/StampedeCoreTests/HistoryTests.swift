@@ -44,4 +44,18 @@ final class HistoryTests: XCTestCase {
         ])
         XCTAssertEqual(history.entries.map(\.text), ["a"])
     }
+
+    func testPreviewBoundsCombiningMarkFlood() {
+        let preview = ClipboardEntry(text: "a" + String(repeating: "\u{301}", count: 100_000)).preview
+        XCTAssertLessThanOrEqual(preview.unicodeScalars.count, 320)
+        XCTAssertTrue(preview.hasSuffix("…"))
+    }
+
+    func testOrdinaryPreviewsTruncateAtSeventyCharacters() {
+        let exact = String(repeating: "a", count: 70)
+        XCTAssertEqual(ClipboardEntry(text: exact).preview, exact)
+        XCTAssertEqual(ClipboardEntry(text: exact + "b").preview, exact + "…")
+        XCTAssertEqual(ClipboardEntry(text: String(repeating: "a", count: 1_000)).preview, exact + "…")
+        XCTAssertEqual(ClipboardEntry(text: "e\u{301} \u{1F44D}\u{1F3FD}").preview, "e\u{301} \u{1F44D}\u{1F3FD}")
+    }
 }
