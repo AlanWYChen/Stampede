@@ -57,6 +57,10 @@ import StampedeCore
         file.setString("example.txt", forType: .string)
         board.clearContents()
         guard board.writeObjects([file]), client.read() == .excluded else { return false }
+        let imageFileOnly = NSPasteboardItem()
+        imageFileOnly.setString("file:///nonexistent/image.png", forType: .fileURL)
+        board.clearContents()
+        guard board.writeObjects([imageFileOnly]), client.read() == .excluded else { return false }
         guard client.write("selected history entry"), client.read() == .text("selected history entry") else { return false }
         for identifier in ClipboardImage.supportedTypes {
             guard let data = sampleImageData(type: identifier) else { return false }
@@ -83,10 +87,21 @@ import StampedeCore
             board.clearContents()
             guard board.writeObjects([sensitiveImage]), client.read() == .excluded else { return false }
             let fileImage = NSPasteboardItem()
-            fileImage.setString("file:///tmp/image.png", forType: .fileURL)
+            // Match the WeChat/Qt image + temporary-file-reference combination.
+            // Deliberately point to a nonexistent file: capture must use only the supplied image bytes.
+            fileImage.setString("file:///nonexistent/stampede-selftest/image", forType: .fileURL)
+            fileImage.setString("file:///nonexistent/stampede-selftest/image", forType: .init("com.trolltech.anymime.text--uri-list"))
+            fileImage.setData(Data(), forType: .init("com.trolltech.anymime.application--x-qt-image"))
             fileImage.setData(data, forType: type)
             board.clearContents()
-            guard board.writeObjects([fileImage]), client.read() == .excluded else { return false }
+            guard board.writeObjects([fileImage]), case .image(let fileCandidate) = client.read(),
+                  fileCandidate.type == identifier, fileCandidate.data == data else { return false }
+            let concealedFileImage = NSPasteboardItem()
+            concealedFileImage.setString("file:///nonexistent/stampede-selftest/image", forType: .fileURL)
+            concealedFileImage.setData(data, forType: type)
+            concealedFileImage.setData(Data(), forType: .init("org.nspasteboard.ConcealedType"))
+            board.clearContents()
+            guard board.writeObjects([concealedFileImage]), client.read() == .excluded else { return false }
         }
         let revision = client.clear()
         return revision == client.revision && client.read() == .excluded

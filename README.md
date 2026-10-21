@@ -115,7 +115,7 @@ Devices must be nearby, signed in to the same Apple Account, and have Wi-Fi, Blu
 
 ## Current limitations
 
-- **Images:** single-frame PNG, TIFF, JPEG, and HEIC clipboard data are supported. PNG, then TIFF, then JPEG, then HEIC is preferred when multiple formats are offered; original bytes are preserved. Finder file copies, file promises, PDFs, animations, and multi-item copies are excluded. Their normal paste behavior is unaffected.
+- **Images:** single-frame PNG, TIFF, JPEG, and HEIC clipboard data are supported. PNG, then TIFF, then JPEG, then HEIC is preferred when multiple formats are offered; original bytes are preserved. File-reference-only copies (including Finder copies), file promises, PDFs, animations, and multi-item copies are excluded. When an app such as WeChat supplies both image bytes and a file reference, Stampede saves the supplied image without opening the referenced file. Their normal paste behavior is unaffected.
 - **Bounded history:** 10 or 20 mixed entries; 1 MiB of UTF-8 text per entry; 20 MiB, 16 megapixels, and 8,192 pixels per edge for an image. A 100 MiB total payload budget can evict older entries before the count limit is reached. Oversized images leave existing history intact.
 - **Polling:** very rapid copies between checks can be missed. Stampede cannot reconstruct copies made while it was closed or the Mac was asleep.
 - **Local builds:** ad-hoc signed by default and not sandboxed. No notarized installer or automatic updater is provided.
