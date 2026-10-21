@@ -18,3 +18,9 @@ jobs:
         run: swift test
       - name: Build native macOS application
         run: xcodebuild -project Stampede.xcodeproj -scheme Stampede -configuration Release -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
+      - name: Build and sign installable app bundle
+        run: ./scripts/build-app.sh
+      - name: Verify app bundle signature
+        run: codesign --verify --strict --verbose=2 build/Stampede.app
+      - name: Test native clipboard integration
+        run: build/Stampede.app/Contents/MacOS/Stampede --self-test
