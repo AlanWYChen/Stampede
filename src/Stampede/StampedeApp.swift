@@ -67,7 +67,7 @@ import SwiftUI
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
-        model.poll()
+        model.poll(foreground: true)
         model.refreshLoginStatus()
         rebuild(menu)
     }

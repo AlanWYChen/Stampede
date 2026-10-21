@@ -163,14 +163,14 @@ import ServiceManagement
         self.timer = timer
     }
 
-    func poll() {
+    func poll(foreground: Bool = false) {
         guard ready, !preview else { return }
         refreshClipboardAccess()
         if paused {
             // Watching revisions does not read content, and keeps the checkmark honest while paused.
             if monitor.processedRevision != clipboard.revision { monitor.baseline() }
         } else {
-            monitor.poll()
+            monitor.poll(foreground: foreground)
         }
     }
 
@@ -237,7 +237,7 @@ import ServiceManagement
             promote(entry)
             return
         }
-        if !paused { monitor.poll() }
+        if !paused { monitor.poll(foreground: true) }
         guard entry.image?.data != nil || entry.image == nil else {
             operationError = "This saved image is missing or unreadable. Other entries are still available."
             return
