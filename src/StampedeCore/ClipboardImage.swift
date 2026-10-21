@@ -58,18 +58,31 @@ public struct ClipboardImage: Codable, Equatable, Sendable {
     }
 
     public var label: String {
-        func compact(_ value: String?, limit: Int) -> String? {
+        func compact(_ value: String?, limit: Int, keepEnd: Bool = false) -> String? {
             guard let value else { return nil }
             let clean = value.map {
                 $0.isWhitespace || $0.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) })
                     ? " " : String($0)
             }.joined()
+            if keepEnd, clean.count > limit { return "…" + String(clean.suffix(limit)) }
             return String(clean.prefix(limit)) + (clean.count > limit ? "…" : "")
         }
-        let origin = [compact(sourceApp, limit: 24), compact(sourceHost, limit: 40)].compactMap { $0 }.joined(
-            separator: " · "
-        )
+        // Hosts keep their registrable end so a look-alike prefix cannot push the real domain out of view.
+        let origin = [compact(sourceApp, limit: 24), compact(sourceHost, limit: 40, keepEnd: true)].compactMap { $0 }
+            .joined(
+                separator: " · "
+            )
         return "Image · \(width) × \(height)" + (origin.isEmpty ? "" : " · \(origin)")
+    }
+
+    /// An HTTP(S) URL's host as lowercase `[a-z0-9.-]` (IDNs stay punycode), else nil; long hosts keep their registrable end.
+    public static func sanitizedHost(fromURL string: String?) -> String? {
+        guard let url = string.flatMap(URL.init(string:)),
+            ["http", "https"].contains(url.scheme?.lowercased() ?? ""),
+            let host = url.host(percentEncoded: true)?.lowercased(), !host.isEmpty,
+            host.unicodeScalars.allSatisfy({ "abcdefghijklmnopqrstuvwxyz0123456789.-".unicodeScalars.contains($0) })
+        else { return nil }
+        return String(host.suffix(200))
     }
 
     public var authenticatedContext: Data { Data("\(blobID.uuidString):\(type)".utf8) }

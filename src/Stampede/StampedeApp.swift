@@ -140,10 +140,13 @@ import SwiftUI
                     model.ready ? "Copy text or an image to start your history" : "Saved history is not loaded",
                     to: menu
                 )
+            } else {
+                menu.addItem(.sectionHeader(title: "Recent Copies"))
             }
             for entry in model.history.entries {
                 let item = add(entry.preview, to: menu, action: #selector(selectEntry(_:)), represented: entry.id)
                 item.state = entry.id == model.currentID ? .on : .off
+                item.indentationLevel = 1
                 item.toolTip = "Make this copy the active clipboard, then paste as usual."
                 if let image = entry.image {
                     #if compiler(>=6.4)
