@@ -247,6 +247,11 @@ public actor HistoryRepository {
             withIntermediateDirectories: true,
             attributes: [.posixPermissions: 0o700]
         )
+        // Keep decryptable history and images out of Time Machine. Best effort: the flag never fails a save.
+        var storage = fileURL.deletingLastPathComponent()
+        var backup = URLResourceValues()
+        backup.isExcludedFromBackup = true
+        try? storage.setResourceValues(backup)
         let images = entries.compactMap(\.image)
         for image in images where !committedBlobs.contains(image.blobID) {
             guard let bytes = image.data else { continue }
