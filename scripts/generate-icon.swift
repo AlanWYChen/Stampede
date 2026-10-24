@@ -10,9 +10,9 @@ import UniformTypeIdentifiers
             throw CocoaError(.fileReadCorruptFile)
         }
         try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
-        // Keep the ICNS compact: 256 pixels is the largest representation.
-        for size in [16, 32, 128, 256] {
-            for scale in [1, 2] where size * scale <= 256 {
+        // Include every standard macOS icon representation, through 1024 pixels.
+        for size in [16, 32, 128, 256, 512] {
+            for scale in [1, 2] {
                 // Resize the supplied artwork without redrawing, cropping, or removing its background.
                 guard
                     let image = CGImageSourceCreateThumbnailAtIndex(
